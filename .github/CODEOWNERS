@@ -1,0 +1,3 @@
+# Schema changes require architect approval
+database/prisma/schema.prisma @winston-architect @tech-lead
+database/prisma/migrations/**/*.sql @winston-architect @tech-lead

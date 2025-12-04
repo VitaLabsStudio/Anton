@@ -1,0 +1,488 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Message archetypes for reply generation
+/// Evolvable: New archetypes can be added via dashboard without migrations
+model Archetype {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  description String?
+  isActive    Boolean    @default(true) @map("is_active")
+  sortOrder   Int        @default(0) @map("sort_order")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  decisions   Decision[]
+  replies     Reply[]
+
+  @@map("archetypes")
+}
+
+/// Power user tiers based on follower counts
+/// Evolvable: Thresholds and tiers can be adjusted without migrations
+model PowerTier {
+  id             String   @id @default(uuid())
+  name           String   @unique
+  minFollowers   Int      @map("min_followers")
+  maxFollowers   Int?     @map("max_followers")
+  description    String?
+  priorityWeight Float    @default(1.0) @map("priority_weight")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  authors        Author[]
+
+  @@map("power_tiers")
+}
+
+/// Competitor categories for classification
+/// Evolvable: New competitive categories can be added via dashboard
+model CompetitorCategory {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  description String?
+  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  competitors Competitor[]
+
+  @@map("competitor_categories")
+}
+
+/// KPI metric types for analytics
+/// Evolvable: New KPI types can be tracked without schema changes
+model KpiType {
+  id              String      @id @default(uuid())
+  name            String      @unique
+  description     String?
+  aggregationType String      @default("SUM") @map("aggregation_type")
+  unit            String?
+  isActive        Boolean     @default(true) @map("is_active")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  metrics         KpiMetric[]
+
+  @@map("kpi_types")
+}
+
+/// Escalation reasons for human oversight
+/// Evolvable: New escalation reasons can be defined for edge cases
+model EscalationReason {
+  id           String             @id @default(uuid())
+  name         String             @unique
+  description  String?
+  severity     EscalationPriority @default(MEDIUM)
+  autoEscalate Boolean            @default(false) @map("auto_escalate")
+  isActive     Boolean            @default(true) @map("is_active")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  escalations  Escalation[]
+
+  @@map("escalation_reasons")
+}
+
+/// Community champion tiers for advocacy program
+/// Evolvable: Tier criteria and benefits can evolve with program
+model ChampionTier {
+  id            String              @id @default(uuid())
+  name          String              @unique
+  minEngagement Int                 @map("min_engagement")
+  benefits      Json                @default("[]")
+  description   String?
+  priorityScore Float               @default(1.0) @map("priority_score")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  champions     CommunityChampion[]
+
+  @@map("champion_tiers")
+}
+
+/// Social media account/user tracked by the system
+model Author {
+  id                 String             @id @default(uuid())
+  platform           Platform
+  platformId         String             @map("platform_id")
+  handle             String
+  displayName        String?            @map("display_name")
+  followerCount      Int                @default(0) @map("follower_count")
+  isVerified         Boolean            @default(false) @map("is_verified")
+  isPowerUser        Boolean            @default(false) @map("is_power_user")
+  powerTierId        String?            @map("power_tier_id")
+  archetypeTags      String[]           @map("archetype_tags")
+  relationshipScore  Float              @default(0.5) @map("relationship_score")
+  interactionHistory Json               @default("[]") @map("interaction_history")
+  firstSeenAt        DateTime           @default(now()) @map("first_seen_at")
+  lastSeenAt         DateTime           @default(now()) @map("last_seen_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  powerTier          PowerTier?         @relation(fields: [powerTierId], references: [id], onDelete: SetNull)
+  champions          CommunityChampion?
+  posts              Post[]
+
+  @@unique([platform, platformId])
+  @@index([platform, handle])
+  @@index([isPowerUser])
+  @@index([relationshipScore])
+  @@map("authors")
+}
+
+/// Social media post detected by keyword monitoring
+model Post {
+  id                  String               @id @default(uuid())
+  platform            Platform
+  platformPostId      String               @map("platform_post_id")
+  authorId            String               @map("author_id")
+  content             String
+  detectedAt          DateTime             @default(now()) @map("detected_at")
+  processedAt         DateTime?            @map("processed_at")
+  keywordMatches      String[]             @map("keyword_matches")
+  keywordCategories   String[]             @map("keyword_categories")
+  spamFiltered        Boolean              @default(false) @map("spam_filtered")
+  rawMetrics          Json?                @map("raw_metrics")
+  errorCount          Int                  @default(0) @map("error_count")
+  errorMessage        String?              @map("error_message")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  competitiveMentions CompetitiveMention[]
+  decisions           Decision[]
+  escalations         Escalation[]
+  author              Author               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([platform, platformPostId])
+  @@index([processedAt])
+  @@index([platform, detectedAt])
+  @@index([spamFiltered])
+  @@map("posts")
+}
+
+/// Decision made by the analysis engine for a post
+model Decision {
+  id                     String                 @id @default(uuid())
+  postId                 String                 @map("post_id")
+  sssScore               Float                  @map("sss_score")
+  arsScore               Float                  @map("ars_score")
+  evsScore               Float                  @map("evs_score")
+  trsScore               Float                  @map("trs_score")
+  compositeScore         Float                  @map("composite_score")
+  mode                   OperationalMode
+  archetypeId            String?                @map("archetype_id")
+  safetyFlags            String[]               @map("safety_flags")
+  signalsJson            Json?                  @map("signals_json")
+  temporalContext        Json?                  @map("temporal_context")
+  competitorDetected     Boolean                @default(false) @map("competitor_detected")
+  isPowerUser            Boolean                @default(false) @map("is_power_user")
+  experimentId           String?                @map("experiment_id")
+  experimentVariant      String?                @map("experiment_variant")
+  isRandomizedExperiment Boolean                @default(false) @map("is_randomized_experiment")
+  predictedMode          OperationalMode?       @map("predicted_mode")
+  createdAt              DateTime               @default(now()) @map("created_at")
+  archetype              Archetype?             @relation(fields: [archetypeId], references: [id], onDelete: SetNull)
+  experiment             Experiment?            @relation(fields: [experimentId], references: [id], onDelete: SetNull)
+  post                   Post                   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  escalations            Escalation[]
+  randomizedExperiments  RandomizedExperiment[]
+  replies                Reply[]
+
+  @@index([createdAt])
+  @@index([experimentVariant])
+  @@index([isRandomizedExperiment])
+  @@index([mode])
+  @@index([compositeScore])
+  @@map("decisions")
+}
+
+/// Reply generated and posted by the system
+model Reply {
+  id             String         @id @default(uuid())
+  decisionId     String         @map("decision_id")
+  content        String
+  archetypeId    String?        @map("archetype_id")
+  platform       Platform
+  platformPostId String?        @map("platform_post_id")
+  utmCode        String?        @map("utm_code")
+  helpCount      Int            @default(0) @map("help_count")
+  approvalStatus ApprovalStatus @default(PENDING) @map("approval_status")
+  approvedBy     String?        @map("approved_by")
+  approvedAt     DateTime?      @map("approved_at")
+  postedAt       DateTime?      @map("posted_at")
+  metricsJson    Json?          @map("metrics_json")
+  deletedAt      DateTime?      @map("deleted_at")
+  deleteReason   String?        @map("delete_reason")
+  replyType      ReplyType      @default(AUTO) @map("reply_type")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  escalations    Escalation[]
+  archetype      Archetype?     @relation(fields: [archetypeId], references: [id], onDelete: SetNull)
+  decision       Decision       @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([postedAt])
+  @@index([approvalStatus])
+  @@index([platform, postedAt])
+  @@index([platformPostId])
+  @@map("replies")
+}
+
+/// Competitor brand tracked for mentions
+model Competitor {
+  id               String               @id @default(uuid())
+  name             String               @unique
+  categoryId       String?              @map("category_id")
+  primaryMechanism String?              @map("primary_mechanism")
+  pricePoint       String?              @map("price_point")
+  brandKeywords    String[]             @map("brand_keywords")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  mentions         CompetitiveMention[]
+  category         CompetitorCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@map("competitors")
+}
+
+/// Mention of competitor in a monitored post
+model CompetitiveMention {
+  id               String     @id @default(uuid())
+  postId           String     @map("post_id")
+  competitorId     String     @map("competitor_id")
+  sentiment        String?
+  satisfaction     String?
+  opportunityScore Float      @default(0) @map("opportunity_score")
+  replied          Boolean    @default(false)
+  createdAt        DateTime   @default(now()) @map("created_at")
+  competitor       Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  post             Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([sentiment])
+  @@index([opportunityScore])
+  @@map("competitive_mentions")
+}
+
+/// Community champion identified for advocacy program
+model CommunityChampion {
+  id              String        @id @default(uuid())
+  authorId        String        @unique @map("author_id")
+  tierId          String?       @map("tier_id")
+  engagementCount Int           @default(0) @map("engagement_count")
+  dmSentAt        DateTime?     @map("dm_sent_at")
+  dmResponse      String?       @map("dm_response")
+  sampleSent      Boolean       @default(false) @map("sample_sent")
+  converted       Boolean       @default(false)
+  advocateStatus  String        @default("POTENTIAL") @map("advocate_status")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  author          Author        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tier            ChampionTier? @relation(fields: [tierId], references: [id], onDelete: SetNull)
+
+  @@index([advocateStatus])
+  @@index([engagementCount])
+  @@map("community_champions")
+}
+
+/// A/B testing experiment configuration
+model Experiment {
+  id           String           @id @default(uuid())
+  name         String
+  description  String?
+  variantA     Json             @map("variant_a")
+  variantB     Json             @map("variant_b")
+  metric       String
+  trafficSplit Float            @default(0.5) @map("traffic_split")
+  status       ExperimentStatus @default(DRAFT)
+  startDate    DateTime?        @map("start_date")
+  endDate      DateTime?        @map("end_date")
+  resultsJson  Json?            @map("results_json")
+  winner       String?
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  decisions    Decision[]
+
+  @@index([status])
+  @@index([startDate])
+  @@map("experiments")
+}
+
+/// Log of weight adjustments by the learning system
+model WeightAdjustmentLog {
+  id                   String   @id @default(uuid())
+  date                 DateTime @default(now())
+  action               String
+  reason               String
+  validSegments        Int      @map("valid_segments")
+  totalSegments        Int      @map("total_segments")
+  sampleSizes          Json     @map("sample_sizes")
+  oldWeights           Json     @map("old_weights")
+  newWeights           Json     @map("new_weights")
+  predictedImprovement Float    @map("predicted_improvement")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@index([date])
+  @@map("weight_adjustment_logs")
+}
+
+/// Learning event tracking for algorithm improvement
+model LearningEvent {
+  id                   String    @id @default(uuid())
+  date                 DateTime  @default(now())
+  adjustmentType       String    @map("adjustment_type")
+  adjustment           Json
+  predictedImprovement Float     @map("predicted_improvement")
+  baselinePerformance  Float     @map("baseline_performance")
+  actualImprovement    Float?    @map("actual_improvement")
+  accuracy             Float?
+  evaluatedAt          DateTime? @map("evaluated_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  @@index([date])
+  @@index([adjustmentType])
+  @@map("learning_events")
+}
+
+/// Randomized experiment results for causal inference
+model RandomizedExperiment {
+  id               String          @id @default(uuid())
+  decisionId       String          @map("decision_id")
+  predictedMode    OperationalMode @map("predicted_mode")
+  actualMode       OperationalMode @map("actual_mode")
+  predictedOutcome Float           @map("predicted_outcome")
+  actualOutcome    Float?          @map("actual_outcome")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  decision         Decision        @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([predictedMode])
+  @@index([actualMode])
+  @@map("randomized_experiments")
+}
+
+/// Segmented weight optimization per platform/time
+model SegmentedWeight {
+  id          String   @id @default(uuid())
+  segmentType String   @map("segment_type")
+  segmentKey  String   @map("segment_key")
+  sssWeight   Float    @default(0.25) @map("sss_weight")
+  arsWeight   Float    @default(0.25) @map("ars_weight")
+  evsWeight   Float    @default(0.25) @map("evs_weight")
+  trsWeight   Float    @default(0.25) @map("trs_weight")
+  sampleSize  Int      @default(0) @map("sample_size")
+  performance Float    @default(0) @map("performance")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([segmentType, segmentKey])
+  @@map("segmented_weights")
+}
+
+/// KPI metric data point for analytics
+model KpiMetric {
+  id         String   @id @default(uuid())
+  date       DateTime @default(now()) @db.Date
+  platform   Platform
+  kpiTypeId  String   @map("kpi_type_id")
+  metricName String   @map("metric_name")
+  value      Float
+  createdAt  DateTime @default(now()) @map("created_at")
+  kpiType    KpiType  @relation(fields: [kpiTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([date, platform, kpiTypeId, metricName])
+  @@index([date])
+  @@index([platform])
+  @@map("kpi_metrics")
+}
+
+/// Escalation for human oversight
+model Escalation {
+  id              String             @id @default(uuid())
+  postId          String?            @map("post_id")
+  decisionId      String?            @map("decision_id")
+  replyId         String?            @map("reply_id")
+  reasonId        String?            @map("reason_id")
+  reasonText      String?            @map("reason_text")
+  priority        EscalationPriority @default(MEDIUM)
+  status          EscalationStatus   @default(OPEN)
+  assignedTo      String?            @map("assigned_to")
+  resolvedBy      String?            @map("resolved_by")
+  resolutionNotes String?            @map("resolution_notes")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  resolvedAt      DateTime?          @map("resolved_at")
+  decision        Decision?          @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  post            Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reason          EscalationReason?  @relation(fields: [reasonId], references: [id], onDelete: SetNull)
+  reply           Reply?             @relation(fields: [replyId], references: [id], onDelete: Cascade)
+
+  @@index([status, priority])
+  @@index([createdAt])
+  @@index([assignedTo])
+  @@map("escalations")
+}
+
+/// Audit log for compliance and debugging
+model AuditLog {
+  id          String   @id @default(uuid())
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  action      String
+  actor       String
+  detailsJson Json?    @map("details_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([actor])
+  @@map("audit_logs")
+}
+
+model HealthCheck {
+  id        String   @id @default(uuid())
+  status    String
+  timestamp DateTime @default(now())
+  metadata  Json?
+
+  @@map("health_checks")
+}
+
+enum Platform {
+  TWITTER
+  REDDIT
+  THREADS
+}
+
+enum OperationalMode {
+  HELPFUL
+  ENGAGEMENT
+  HYBRID
+  DISENGAGED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReplyType {
+  MANUAL
+  AUTO
+}
+
+enum ExperimentStatus {
+  DRAFT
+  RUNNING
+  COMPLETED
+  CANCELLED
+}
+
+enum EscalationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum EscalationStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}

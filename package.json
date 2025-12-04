@@ -1,0 +1,64 @@
+{
+  "name": "antone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Antone V1 - Autonomous AI Social Media Manager",
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r --workspace-concurrency=1 run build",
+    "postbuild": "node scripts/verify-build.cjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r run typecheck",
+    "validate": "pnpm format:check && pnpm lint && pnpm typecheck",
+    "validate:schema": "tsx scripts/validate-schema.ts",
+    "verify:workspace": "tsx scripts/verify-workspace.ts",
+    "db:migrate": "pnpm --filter database run db:migrate",
+    "db:seed": "pnpm --filter database run db:seed",
+    "db:studio": "pnpm --filter database run db:studio",
+    "db:generate": "pnpm --filter database run db:generate",
+    "docker:dev": "docker compose -f docker/docker-compose.dev.yml up -d",
+    "docker:prod": "docker compose -f docker/docker-compose.yml up -d",
+    "docker:down": "docker compose down",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "@eslint/js": "^9.15.0",
+    "@next/eslint-plugin-next": "^16.0.7",
+    "@types/node": "^22.10.1",
+    "@typescript-eslint/eslint-plugin": "^8.17.0",
+    "@typescript-eslint/parser": "^8.17.0",
+    "eslint": "^9.15.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-security": "^3.0.1",
+    "globals": "^15.14.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^2.1.8"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,jsx,json,md,yaml,yml}": "prettier --write"
+  }
+}
