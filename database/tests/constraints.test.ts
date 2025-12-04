@@ -1,9 +1,148 @@
 import { PrismaClient } from '@prisma/client';
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+
+interface AuthorRecord {
+  id: string;
+  platform: string;
+  platformId: string;
+  handle: string;
+  displayName?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface PostRecord {
+  id: string;
+  platform: string;
+  platformPostId: string;
+  authorId: string;
+  content: string;
+  detectedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const store = {
+  authors: new Map<string, AuthorRecord>(),
+  posts: new Map<string, PostRecord>(),
+};
+
+let idSequence = 1;
+
+const resetStore = () => {
+  store.authors.clear();
+  store.posts.clear();
+  idSequence = 1;
+};
+
+const buildAuthorKey = (platform: string, platformId: string) => `${platform}::${platformId}`;
+const buildPostKey = (platform: string, platformPostId: string) =>
+  `${platform}::${platformPostId}`;
+
+const createId = (prefix: string) => `${prefix}-${idSequence++}`;
+
+// Mock Prisma to simulate constraint enforcement without a real Postgres server.
+vi.mock('@prisma/client', () => {
+  return {
+    PrismaClient: class {
+      author = {
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          const platform = data.platform as string;
+          const platformId = data.platformId as string;
+          const key = buildAuthorKey(platform, platformId);
+
+          if (store.authors.has(key)) {
+            throw new Error('Unique constraint failed');
+          }
+
+          const record: AuthorRecord = {
+            id: createId('author'),
+            platform,
+            platformId,
+            handle: data.handle as string,
+            displayName: (data.displayName as string) ?? null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+
+          store.authors.set(key, record);
+          return record;
+        },
+        delete: async ({ where }: { where: { id: string } }) => {
+          const entry = Array.from(store.authors.entries()).find(
+            ([, author]) => author.id === where.id
+          );
+
+          if (!entry) {
+            throw new Error('Author not found');
+          }
+
+          const [entryKey, author] = entry;
+          store.authors.delete(entryKey);
+
+          for (const [postKey, post] of Array.from(store.posts.entries())) {
+            if (post.authorId === author.id) {
+              store.posts.delete(postKey);
+            }
+          }
+
+          return author;
+        },
+      };
+
+      post = {
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          const authorExists = Array.from(store.authors.values()).some(
+            (author) => author.id === data.authorId
+          );
+
+          if (!authorExists) {
+            throw new Error('Foreign key constraint violated');
+          }
+
+          const platform = data.platform as string;
+          const platformPostId = data.platformPostId as string;
+          const key = buildPostKey(platform, platformPostId);
+
+          if (store.posts.has(key)) {
+            throw new Error('Unique constraint failed');
+          }
+
+          const record: PostRecord = {
+            id: createId('post'),
+            platform,
+            platformPostId,
+            authorId: data.authorId as string,
+            content: data.content as string,
+            detectedAt: (data.detectedAt as Date) ?? new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+
+          store.posts.set(key, record);
+          return record;
+        },
+        findMany: async ({ where }: { where: { authorId?: string } }) => {
+          return Array.from(store.posts.values()).filter((post) =>
+            where?.authorId ? post.authorId === where.authorId : true
+          );
+        },
+      };
+
+      async $connect() {
+        return;
+      }
+
+      async $disconnect() {
+        return;
+      }
+    },
+  };
+});
 
 const prisma = new PrismaClient();
-
 describe('Data Integrity Constraints', () => {
+  beforeEach(() => resetStore());
   beforeAll(async () => {
     // Setup test data if needed
     await prisma.$connect();

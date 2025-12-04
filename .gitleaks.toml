@@ -1,0 +1,42 @@
+[[rules]]
+id = "twitter-api-key"
+description = "Twitter API Key"
+regex = '''(?i)(twitter[_-]?api[_-]?key|twitter[_-]?consumer[_-]?key)\s*[:=]\s*['"]?([a-zA-Z0-9]{25})['"]?'''
+tags = ["key", "twitter"]
+
+[[rules]]
+id = "twitter-access-token"
+description = "Twitter Access Token"
+regex = '''(?i)(twitter[_-]?access[_-]?token)\s*[:=]\s*['"]?([0-9]+-[a-zA-Z0-9]{40})['"]?'''
+tags = ["key", "twitter"]
+
+[[rules]]
+id = "twitter-bearer-token"
+description = "Twitter Bearer Token"  
+regex = '''(?i)(twitter[_-]?bearer[_-]?token)\s*[:=]\s*['"]?([a-zA-Z0-9%-]{100,})['"]?'''
+tags = ["key", "twitter"]
+
+[[rules]]
+id = "reddit-client-id"
+description = "Reddit Client ID"
+regex = '''(?i)(reddit[_-]?client[_-]?id)\s*[:=]\s*['"]?([a-z0-9]{14,20})['"]?'''
+tags = ["key", "reddit"]
+
+[[rules]]
+id = "reddit-client-secret"
+description = "Reddit Client Secret"
+regex = '''(?i)(reddit[_-]?client[_-]?secret)\s*[:=]\s*['"]?([a-z0-9_\-]{30,})['"]?'''
+tags = ["key", "reddit"]
+
+[[rules]]
+id = "reddit-refresh-token"
+description = "Reddit Refresh Token"
+regex = '''(?i)(?:refresh_token=)?[a-z0-9_-]{20,}_[a-z0-9_-]{20,}'''
+tags = ["token", "reddit"]
+keywords = ["reddit", "refresh_token"]
+
+[[rules]]
+id = "meta-access-token"
+description = "Meta/Threads Long-lived Access Token"
+regex = '''EAA[a-zA-Z0-9-_]{150,}'''
+tags = ["key", "meta", "threads"]

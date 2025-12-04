@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Antone Learning System Configuration - From Learning System Improvements Doc",
+
+  "minimumSampleSizes": {
+    "basicStatistics": 30,
+    "thompsonSampling": 100,
+    "segmentAnalysis": 50,
+    "causalInference": 200,
+    "metaLearning": 500
+  },
+
+  "robustStatistics": {
+    "winsorization": {
+      "enabled": true,
+      "lowerPercentile": 5,
+      "upperPercentile": 95
+    },
+    "outlierDetection": {
+      "method": "iqr",
+      "multiplier": 1.5
+    }
+  },
+
+  "confidenceIntervals": {
+    "defaultLevel": 0.95,
+    "bootstrapIterations": 1000,
+    "tTestMinSample": 30
+  },
+
+  "thompsonSampling": {
+    "priorAlpha": 1,
+    "priorBeta": 1,
+    "explorationBonus": 0.1,
+    "decayRate": 0.995,
+    "minimumPulls": 10
+  },
+
+  "segmentation": {
+    "enabled": true,
+    "dimensions": ["platform", "archetype", "timeOfDay", "dayOfWeek"],
+    "minimumSegmentSize": 50,
+    "maxSegments": 100
+  },
+
+  "adaptiveLearning": {
+    "initialLearningRate": 0.1,
+    "minLearningRate": 0.01,
+    "maxLearningRate": 0.5,
+    "decayFactor": 0.99,
+    "adaptationWindow": 100
+  },
+
+  "causalInference": {
+    "enabled": true,
+    "confoundingVariables": ["timeOfDay", "dayOfWeek", "platform", "authorFollowers"],
+    "propensityScoreMethod": "logistic",
+    "matchingMethod": "nearestNeighbor",
+    "caliperWidth": 0.1
+  },
+
+  "metaLearning": {
+    "enabled": true,
+    "strategyEvaluationWindow": 1000,
+    "performanceThreshold": 0.05,
+    "adaptationSpeed": "medium",
+    "contextFeatures": ["platform", "timeOfDay", "authorType", "topicCategory"]
+  },
+
+  "safetyBounds": {
+    "maxWeightChange": 0.2,
+    "minWeight": 0.05,
+    "maxWeight": 0.95,
+    "cooldownPeriod": 3600
+  }
+}

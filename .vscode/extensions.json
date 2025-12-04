@@ -1,0 +1,31 @@
+{
+  "recommendations": [
+    // Code Quality
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+
+    // TypeScript & JavaScript
+    "ms-vscode.vscode-typescript-next",
+
+    // Tailwind CSS
+    "bradlc.vscode-tailwindcss",
+
+    // Database
+    "prisma.prisma",
+
+    // Testing
+    "vitest.explorer",
+
+    // Git
+    "eamodio.gitlens",
+
+    // DX Improvements
+    "usernamehw.errorlens",
+    "streetsidesoftware.code-spell-checker",
+    "yoavbls.pretty-ts-errors",
+
+    // Docker
+    "ms-azuretools.vscode-docker"
+  ],
+  "unwantedRecommendations": []
+}

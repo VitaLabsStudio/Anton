@@ -1,0 +1,38 @@
+schema: 1
+story: '1.8'
+story_title: 'Health Check & Monitoring Endpoint'
+gate: PASS
+status_reason: 'All acceptance criteria now pass and TEST-001 no longer returns false positives: worker health requires both a recent timestamp and `posts_processed_count > 0`, so the detailed endpoint reflects actual activity before declaring healthy.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-12-04T22:20:00Z'
+
+top_issues: []
+waiver: { active: false }
+
+quality_score: 100
+
+evidence:
+  tests_reviewed: 49
+  tests_command: 'pnpm vitest --run backend/src/__tests__/services/health-check.test.ts backend/src/__tests__/api/routes/health.test.ts backend/src/__tests__/api/middleware/auth.test.ts backend/src/__tests__/api/middleware/ip-whitelist.test.ts'
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Auth + IP whitelist fully protect `/health/detailed`.'
+  performance:
+    status: PASS
+    notes: 'Background caching keeps health checks cheap and deterministic.'
+  reliability:
+    status: PASS
+    notes: 'TECH-001 requires both timestamp and `posts_processed_count > 0`, preventing false positives.'
+  maintainability:
+    status: PASS
+    notes: 'The implementation is modular and testable.'
+
+recommendations:
+  immediate: []
+  future: []

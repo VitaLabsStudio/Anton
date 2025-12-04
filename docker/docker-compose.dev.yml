@@ -1,0 +1,62 @@
+# docker/docker-compose.dev.yml - Development Overrides
+#
+# Adds hot reload, debug ports, and development-friendly settings.
+#
+# Usage with dev-ctl.sh (automatically includes this file):
+#   ./scripts/dev-ctl.sh up -d
+#
+# Manual usage:
+#   docker-compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up -d
+
+services:
+  # Backend API with hot reload
+  backend-api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: development
+    volumes:
+      # Mount source code for hot reload
+      - ../backend/src:/app/backend/src:ro
+      - ../shared/src:/app/shared/src:ro
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+    ports:
+      - '3001:3001'
+      - '9229:9229' # Node.js debugger port
+    command: ['pnpm', '--filter', '@antone/backend', 'dev']
+
+  # Backend Worker with hot reload
+  backend-worker:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: development
+    volumes:
+      - ../backend/src:/app/backend/src:ro
+      - ../shared/src:/app/shared/src:ro
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+    # Worker watches for changes
+    command: ['pnpm', '--filter', '@antone/backend', 'dev:worker']
+
+  # Dashboard with Next.js dev server
+  dashboard:
+    build:
+      context: ..
+      dockerfile: dashboard/Dockerfile
+      target: development
+    volumes:
+      - ../dashboard/src:/app/dashboard/src:ro
+    environment:
+      NODE_ENV: development
+    ports:
+      - '3000:3000'
+    command: ['pnpm', '--filter', '@antone/dashboard', 'dev']
+
+  # Postgres with exposed port for direct access
+  postgres:
+    ports:
+      - '5432:5432'

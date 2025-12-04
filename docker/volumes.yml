@@ -1,0 +1,15 @@
+# docker/volumes.yml - External Volume Definitions (DATA-001 Mitigation)
+#
+# This file defines external volumes that are managed separately from docker-compose.
+# External volumes are NOT deleted by 'docker-compose down -v', providing data protection.
+#
+# Create the volume before first use:
+#   docker volume create antone_postgres_data
+#
+# View volume:
+#   docker volume inspect antone_postgres_data
+
+volumes:
+  antone_postgres_data:
+    name: antone_postgres_data
+    driver: local

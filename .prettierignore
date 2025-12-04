@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.next
+build
+pnpm-lock.yaml
+*.min.js
+*.min.css
+# BMAD documentation - don't format
+docs/
+.bmad-core/
+BMAD Files/

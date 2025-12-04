@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🚀 Running pre-push checks..."
+echo "💡 TIP: To bypass, run 'git push --no-verify'"
+
+pnpm typecheck || {
+  echo "❌ Type checking failed. Please fix the type errors above."
+  echo "💡 To bypass this check in an emergency, run: git push --no-verify"
+  exit 1
+}
+
+pnpm test || {
+  echo "❌ Tests failed. Please fix the failing tests above."
+  echo "💡 To bypass this check in an emergency, run: git push --no-verify"
+  exit 1
+}
+
+echo "✅ Pre-push checks passed."

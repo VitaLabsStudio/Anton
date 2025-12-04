@@ -442,6 +442,21 @@ model HealthCheck {
   @@map("health_checks")
 }
 
+/// Worker heartbeat tracking for health monitoring
+model WorkerHeartbeat {
+  id                  String   @id @default(uuid())
+  workerName          String   @map("worker_name")
+  postsProcessedCount Int      @default(0) @map("posts_processed_count")
+  lastActivityAt      DateTime @default(now()) @map("last_activity_at")
+  metadata            Json?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([workerName])
+  @@index([lastActivityAt])
+  @@map("worker_heartbeats")
+}
+
 enum Platform {
   TWITTER
   REDDIT

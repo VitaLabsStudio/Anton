@@ -1,0 +1,28 @@
+# docker/cloudflared/config.yml - Cloudflare Tunnel Configuration
+#
+# Defines ingress rules for routing traffic through the tunnel.
+# Learn more: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/
+#
+# Setup:
+#   1. Create a tunnel in Cloudflare Zero Trust dashboard
+#   2. Copy the tunnel token to .env as CLOUDFLARE_TUNNEL_TOKEN
+#   3. Update hostnames below to match your domain
+
+tunnel: antone-tunnel
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  # Dashboard UI - main application
+  - hostname: antone.yourdomain.com
+    service: http://dashboard:3000
+    originRequest:
+      noTLSVerify: true
+
+  # API endpoint
+  - hostname: api.antone.yourdomain.com
+    service: http://backend-api:3001
+    originRequest:
+      noTLSVerify: true
+
+  # Catch-all rule (required)
+  - service: http_status:404
