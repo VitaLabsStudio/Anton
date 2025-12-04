@@ -142,7 +142,16 @@ export class SpamFilter {
   /**
    * Get filter statistics
    */
-  getStats() {
+  getStats(): {
+    tier: number;
+    strategy: string;
+    verifiedFollowerThreshold: number;
+    patterns: {
+      media: boolean;
+      crypto: boolean;
+      influencer: boolean;
+    };
+  } {
     return {
       tier: 2,
       strategy: 'permissive',

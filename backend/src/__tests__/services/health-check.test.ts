@@ -8,7 +8,7 @@
  * - First-run behavior (awaits check if cache empty)
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, beforeAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock platform client modules before importing
 vi.mock('../../platforms/twitter/client.js', () => ({
@@ -47,6 +47,13 @@ vi.mock('../../utils/prisma.js', () => ({
 }));
 
 import { HealthCheckService } from '../../services/health-check.js';
+
+type HealthComponentDetail = {
+  healthy: boolean;
+  latency: number;
+  message: string;
+  [key: string]: unknown;
+};
 
 describe('HealthCheckService', () => {
   let service: HealthCheckService;
@@ -128,7 +135,8 @@ describe('HealthCheckService', () => {
 
       const result = await service.getHealth();
 
-      Object.values(result.components).forEach((component) => {
+      const components = result.components as Record<string, HealthComponentDetail>;
+      Object.values(components).forEach((component) => {
         expect(component).toHaveProperty('healthy');
         expect(component).toHaveProperty('latency');
         expect(typeof component.latency).toBe('number');

@@ -13,15 +13,20 @@ import { KarmaGate } from '../../../workers/guards/karma-gate.js';
 import type { RedditClient } from '../../../platforms/reddit/client.js';
 
 describe('KarmaGate', () => {
-  const createMockClient = (karma: number, createdUtc?: number) => {
-    return {
+  const createMockClient = (
+    karma: number,
+    createdUtc?: number
+  ): RedditClient => {
+    const mockClient = {
       getKarma: vi.fn().mockResolvedValue(karma),
       getLastVerifiedInfo: vi.fn().mockReturnValue({
         username: 'test_user',
         karma,
         createdUtc,
       }),
-    } as unknown as RedditClient;
+    };
+
+    return mockClient as unknown as RedditClient;
   };
 
   describe('Karma Threshold', () => {

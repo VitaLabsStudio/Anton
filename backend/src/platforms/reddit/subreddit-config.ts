@@ -72,18 +72,26 @@ export function isSubredditApproved(subreddit: string): boolean {
     return false;
   }
 
-  if (!config.enabled || !config.rulesReviewed) {
-    logger.warn(`Subreddit not approved: ${subreddit}`, { config });
-    return false;
-  }
+    if (!config.enabled || !config.rulesReviewed) {
+      logger.warn(
+        {
+          config,
+        },
+        `Subreddit not approved: ${subreddit}`
+      );
+      return false;
+    }
 
-  if (config.bannedUntil && new Date() < config.bannedUntil) {
-    logger.warn('Subreddit temporarily banned – skipping interaction', {
-      subreddit,
-      bannedUntil: config.bannedUntil,
-    });
-    return false;
-  }
+    if (config.bannedUntil && new Date() < config.bannedUntil) {
+      logger.warn(
+        {
+          subreddit,
+          bannedUntil: config.bannedUntil,
+        },
+        'Subreddit temporarily banned – skipping interaction'
+      );
+      return false;
+    }
 
   return true;
 }
@@ -107,9 +115,12 @@ export function validateSubreddits(subreddits: string[]): string[] {
   }
 
   if (approved.length === 0) {
-    logger.error('No approved subreddits available after validation', {
-      requested: uniqueSubreddits,
-    });
+    logger.error(
+      {
+        requested: uniqueSubreddits,
+      },
+      'No approved subreddits available after validation'
+    );
   }
 
   return approved;

@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+type ThreadsClientConstructor = typeof import('../src/platforms/threads/client.js').ThreadsClient;
+type ThreadsClientInstance = InstanceType<ThreadsClientConstructor>;
 const mockGet = vi.fn();
 const mockPost = vi.fn();
 const mockRequestUse = vi.fn();
@@ -35,7 +37,7 @@ vi.mock('../src/utils/logger', () => ({
 }));
 
 describe('ThreadsClient', () => {
-  let ThreadsClientClass: typeof import('../src/platforms/threads/client.js').ThreadsClient;
+let ThreadsClientClass: ThreadsClientConstructor;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -70,7 +72,7 @@ describe('ThreadsClient', () => {
     delete process.env['REQUIRE_APPROVAL'];
   });
 
-  function buildClient() {
+function buildClient(): ThreadsClientInstance {
     const client = new ThreadsClientClass();
     const healthHandle = (client as unknown as { healthCheckHandle?: number }).healthCheckHandle;
     if (healthHandle) {

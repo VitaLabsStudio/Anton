@@ -121,7 +121,10 @@ export class TemporalMultiplier {
   /**
    * Get statistics about temporal patterns
    */
-  getStats() {
+  getStats(): {
+    peakTimes: Array<{ period: string; multiplier: number }>;
+    baseline: number;
+  } {
     return {
       peakTimes: [
         { period: 'Sunday 6am-11am', multiplier: 3 },

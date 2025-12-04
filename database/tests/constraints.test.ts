@@ -47,8 +47,8 @@ vi.mock('@prisma/client', () => {
     PrismaClient: class {
       author = {
         create: async ({ data }: { data: Record<string, unknown> }) => {
-          const platform = data.platform as string;
-          const platformId = data.platformId as string;
+          const platform = data['platform'] as string;
+          const platformId = data['platformId'] as string;
           const key = buildAuthorKey(platform, platformId);
 
           if (store.authors.has(key)) {
@@ -59,8 +59,8 @@ vi.mock('@prisma/client', () => {
             id: createId('author'),
             platform,
             platformId,
-            handle: data.handle as string,
-            displayName: (data.displayName as string) ?? null,
+            handle: data['handle'] as string,
+            displayName: (data['displayName'] as string) ?? null,
             createdAt: new Date(),
             updatedAt: new Date(),
           };
@@ -93,15 +93,15 @@ vi.mock('@prisma/client', () => {
       post = {
         create: async ({ data }: { data: Record<string, unknown> }) => {
           const authorExists = Array.from(store.authors.values()).some(
-            (author) => author.id === data.authorId
+            (author) => author.id === (data['authorId'] as string)
           );
 
           if (!authorExists) {
             throw new Error('Foreign key constraint violated');
           }
 
-          const platform = data.platform as string;
-          const platformPostId = data.platformPostId as string;
+          const platform = data['platform'] as string;
+          const platformPostId = data['platformPostId'] as string;
           const key = buildPostKey(platform, platformPostId);
 
           if (store.posts.has(key)) {
@@ -112,9 +112,9 @@ vi.mock('@prisma/client', () => {
             id: createId('post'),
             platform,
             platformPostId,
-            authorId: data.authorId as string,
-            content: data.content as string,
-            detectedAt: (data.detectedAt as Date) ?? new Date(),
+            authorId: data['authorId'] as string,
+            content: data['content'] as string,
+            detectedAt: (data['detectedAt'] as Date) ?? new Date(),
             createdAt: new Date(),
             updatedAt: new Date(),
           };

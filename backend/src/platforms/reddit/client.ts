@@ -12,8 +12,26 @@ import {
 } from './subreddit-config.js';
 import type { ClientStatus, IPlatformClient, Post } from '../IPlatformClient.js';
 
-type Submission = Snoowrap.Submission;
-type RedditProfile = Snoowrap.RedditUser | Snoowrap.RedditUserSummary;
+interface SubmissionAuthor {
+  id?: string;
+  name?: string;
+}
+
+interface Submission {
+  id: string;
+  title: string;
+  selftext?: string | null;
+  author?: SubmissionAuthor | string;
+  author_fullname?: string;
+  reply: (content: string) => Promise<{ id: string }>;
+}
+
+interface RedditProfileData {
+  name?: string;
+  comment_karma?: number;
+  link_karma?: number;
+  created_utc?: number;
+}
 
 interface VerificationCache {
   username: string;
@@ -55,7 +73,7 @@ export class RedditClient implements IPlatformClient {
     return validateSubreddits(approvedConfigs.map((config) => config.name));
   }
 
-  private cacheVerification(me: RedditProfile): void {
+  private cacheVerification(me: RedditProfileData): void {
     this.verificationCache = {
       username: me.name ?? '',
       karma: (me.comment_karma ?? 0) + (me.link_karma ?? 0),
@@ -74,16 +92,17 @@ export class RedditClient implements IPlatformClient {
     ].filter(Boolean);
     const content = contentParts.join('\n').trim() || submission.title;
 
+    const authorObj =
+      typeof submission.author === 'string' ? undefined : submission.author;
+
     const authorName =
-      submission.author?.name ??
+      authorObj?.name ??
       submission.author_fullname ??
       (typeof submission.author === 'string' ? submission.author : '') ??
       'unknown';
 
     const authorId =
-      submission.author_fullname ??
-      submission.author?.id ??
-      submission.id;
+      submission.author_fullname ?? authorObj?.id ?? submission.id;
 
     return {
       id: submission.id,
@@ -111,30 +130,36 @@ export class RedditClient implements IPlatformClient {
 
     const approvedSubreddits = validateSubreddits(subreddits);
     if (approvedSubreddits.length === 0) {
-      logger.error('No approved subreddits available after validation', {
-        requested: subreddits,
-      });
+      logger.error(
+        { requested: subreddits },
+        'No approved subreddits available after validation'
+      );
       return [];
     }
 
     if (approvedSubreddits.length < subreddits.length) {
-      logger.warn('Some subreddits filtered out before search', {
-        requested: subreddits,
-        approved: approvedSubreddits,
-      });
+      logger.warn(
+        {
+          requested: subreddits,
+          approved: approvedSubreddits,
+        },
+        'Some subreddits filtered out before search'
+      );
     }
 
     try {
       return await redditRateLimiter.scheduleRead(async () => {
         return this.circuitBreaker.execute(async () => {
+          const searchOptions: Snoowrap.SearchOptions = {
+            query,
+            time: 'day',
+            sort: 'new',
+            limit: 100,
+          };
+
           const posts = await this.client
             .getSubreddit(approvedSubreddits.join('+'))
-            .search({
-              query,
-              time: 'day',
-              sort: 'new',
-              limit: 100,
-            });
+            .search(searchOptions);
 
           logger.info(
             {
@@ -177,7 +202,9 @@ export class RedditClient implements IPlatformClient {
     try {
       return await redditRateLimiter.scheduleWrite(async () => {
         return this.circuitBreaker.execute(async () => {
-          const submission = await this.client.getSubmission(submissionId);
+          const submission = await (this.client.getSubmission(
+            submissionId
+          ) as Promise<Submission>);
           const comment = await submission.reply(content);
 
           logger.info(
@@ -198,7 +225,7 @@ export class RedditClient implements IPlatformClient {
 
   async verifyCredentials(): Promise<ClientStatus> {
     try {
-      const me = await this.client.getMe();
+      const me = await (this.client.getMe() as Promise<RedditProfileData>);
       this.cacheVerification(me);
 
       logger.info(
@@ -225,9 +252,9 @@ export class RedditClient implements IPlatformClient {
     try {
       return await redditRateLimiter.scheduleRead(async () => {
         return this.circuitBreaker.execute(async () => {
-          const me = await this.client.getMe();
+          const me = await (this.client.getMe() as Promise<RedditProfileData>);
           this.cacheVerification(me);
-          return me.comment_karma + me.link_karma;
+          return (me.comment_karma ?? 0) + (me.link_karma ?? 0);
         });
       });
     } catch (error) {

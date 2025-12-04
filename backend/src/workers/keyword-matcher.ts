@@ -167,7 +167,14 @@ export class KeywordMatcher {
   /**
    * Get stats about the matcher configuration
    */
-  getStats() {
+  getStats(): {
+    version: string;
+    lastUpdated: string;
+    totalTerms: number;
+    totalCategories: number;
+    exclusionPatterns: number;
+    medicalPatterns: number;
+  } {
     const totalTerms = Object.values(this.config.categories).reduce(
       (sum, cat) => sum + cat.terms.length,
       0

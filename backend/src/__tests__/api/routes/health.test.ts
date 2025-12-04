@@ -9,6 +9,7 @@
  * - AC-4: Detailed endpoint returns 503 if unhealthy
  */
 
+import { Hono } from 'hono';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock platform client modules before importing
@@ -47,8 +48,22 @@ vi.mock('../../../utils/prisma.js', () => ({
   },
 }));
 
-import { Hono } from 'hono';
 import { healthRouter } from '../../../api/routes/health.js';
+
+type HealthComponentStatus = {
+  healthy: boolean;
+  latency: number;
+  message: string;
+  [key: string]: unknown;
+};
+
+type HealthDetailedResponse = {
+  status?: string;
+  timestamp?: string;
+  components: Record<string, HealthComponentStatus>;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+};
 
 describe('Health Check Routes', () => {
   let app: Hono;
@@ -165,7 +180,7 @@ describe('Health Check Routes', () => {
 
         const res = await app.fetch(req);
 
-        const body = await res.json();
+        const body = (await res.json()) as HealthDetailedResponse;
 
         expect(body).toHaveProperty('status');
         expect(body).toHaveProperty('timestamp');
@@ -188,10 +203,11 @@ describe('Health Check Routes', () => {
 
         const res = await app.fetch(req);
 
-        const body = await res.json();
+        const body = (await res.json()) as HealthDetailedResponse;
 
         // Check each component has required fields
-        Object.values(body.components).forEach((component: any) => {
+        const components = body.components;
+        Object.values(components).forEach((component) => {
           expect(component).toHaveProperty('healthy');
           expect(component).toHaveProperty('latency');
           expect(component).toHaveProperty('message');
@@ -208,7 +224,7 @@ describe('Health Check Routes', () => {
 
         const res = await app.fetch(req);
 
-        const body = await res.json();
+        const body = (await res.json()) as HealthDetailedResponse;
 
         expect(body).toHaveProperty('metadata');
         expect(body.metadata).toHaveProperty('version');
@@ -234,7 +250,7 @@ describe('Health Check Routes', () => {
         // Should be either 200 (healthy/degraded) or 503 (unhealthy)
         expect([200, 503]).toContain(res.status);
 
-        const body = await res.json();
+        const body = (await res.json()) as HealthDetailedResponse;
 
         // Verify status code matches health status
         if (res.status === 503) {
@@ -252,7 +268,7 @@ describe('Health Check Routes', () => {
 
         const res = await app.fetch(req);
 
-        const body = await res.json();
+        const body = (await res.json()) as HealthDetailedResponse;
 
         if (body.status === 'healthy' || body.status === 'degraded') {
           expect(res.status).toBe(200);
@@ -270,7 +286,7 @@ describe('Health Check Routes', () => {
         });
 
         const res1 = await app.fetch(req1);
-        const body1 = await res1.json();
+        const body1 = (await res1.json()) as HealthDetailedResponse;
 
         // Make second request immediately
         const req2 = new Request('http://localhost/health/detailed', {
@@ -281,7 +297,7 @@ describe('Health Check Routes', () => {
         });
 
         const res2 = await app.fetch(req2);
-        const body2 = await res2.json();
+        const body2 = (await res2.json()) as HealthDetailedResponse;
 
         // Timestamps should be the same (cached)
         expect(body1.timestamp).toEqual(body2.timestamp);

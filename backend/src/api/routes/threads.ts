@@ -17,10 +17,13 @@ threadsRouter.use('*', async (c, next) => {
     c.req.header('authorization')?.replace(/^Bearer\s+/i, '');
 
   if (provided !== secret) {
-    logger.warn('Unauthorized Threads API request', {
-      path: c.req.path,
-      provided,
-    });
+    logger.warn(
+      {
+        path: c.req.path,
+        provided,
+      },
+      'Unauthorized Threads API request'
+    );
     return c.json({ status: 'error', message: 'Unauthorized' }, 401);
   }
 
@@ -31,9 +34,12 @@ threadsRouter.get('/verify', async (c) => {
   const status = await threadsClient.verifyCredentials();
 
   if (!status.available) {
-    logger.warn('Threads verification failed', {
-      message: status.message,
-    });
+    logger.warn(
+      {
+        message: status.message,
+      },
+      'Threads verification failed'
+    );
   }
 
   return c.json({

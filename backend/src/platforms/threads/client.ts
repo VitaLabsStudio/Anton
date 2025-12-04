@@ -1,5 +1,10 @@
 import axios from 'axios';
-import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import type {
+  AxiosError,
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+} from 'axios';
 
 import { appConfig } from '../../config/app-config.js';
 import { CircuitBreaker } from '../../utils/circuit-breaker.js';
@@ -83,7 +88,9 @@ export class ThreadsClient implements IPlatformClient {
     return `${token.slice(0, 6)}***${token.slice(-4)}`;
   }
 
-  private async handleApiError(error: AxiosError) {
+  private async handleApiError(
+    error: AxiosError
+  ): Promise<AxiosResponse<unknown>> {
     const originalRequest = error.config as AxiosRequestConfig & {
       _isRetry?: boolean;
     };
@@ -105,7 +112,7 @@ export class ThreadsClient implements IPlatformClient {
       } catch (refreshError) {
         logger.error({ refreshError }, 'Token refresh failed');
         this.markUnavailable('token_refresh_failure');
-        return Promise.reject(refreshError);
+        return Promise.reject(refreshError) as Promise<AxiosResponse<unknown>>;
       }
     }
 
@@ -118,7 +125,7 @@ export class ThreadsClient implements IPlatformClient {
       );
     }
 
-    return Promise.reject(error);
+    return Promise.reject(error) as Promise<AxiosResponse<unknown>>;
   }
 
   private async refreshToken(): Promise<string> {
@@ -300,11 +307,14 @@ export class ThreadsClient implements IPlatformClient {
     }
   }
 
-  getRateLimitStatus() {
+  getRateLimitStatus(): ReturnType<typeof threadsRateLimiter.getStatus> {
     return threadsRateLimiter.getStatus();
   }
 
-  getCircuitBreakerStatus() {
+  getCircuitBreakerStatus(): {
+    state: 'CLOSED' | 'HALF_OPEN' | 'OPEN';
+    failureCount: number;
+  } {
     return {
       state: this.circuitBreaker.getState(),
       failureCount: this.circuitBreaker.getFailureCount(),
@@ -312,6 +322,7 @@ export class ThreadsClient implements IPlatformClient {
   }
 
   isOperational(): boolean {
+    void this.healthCheckHandle;
     return this.isAvailable;
   }
 }

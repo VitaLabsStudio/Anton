@@ -9,7 +9,7 @@
  * - Successful authentication
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Hono } from 'hono';
 import { authMiddleware } from '../../../api/middleware/auth.js';
 

@@ -54,13 +54,14 @@ export class RedditMonitor {
       );
 
       const detected: DetectedPost[] = newSubmissions.map((sub) => {
+        const authorObj =
+          typeof sub.author === 'string' ? undefined : sub.author;
+
         const authorName =
-          sub.author?.name ??
-          (typeof sub.author === 'string' ? sub.author : '') ??
-          'unknown';
+          authorObj?.name ?? (typeof sub.author === 'string' ? sub.author : '') ?? 'unknown';
 
         const authorId =
-          sub.author_fullname ?? sub.author?.id ?? sub.id;
+          sub.author_fullname ?? authorObj?.id ?? sub.id;
 
         const contentParts = [sub.title, sub.selftext?.trim()].filter(Boolean);
         const content = contentParts.join('\n').trim() || sub.title;

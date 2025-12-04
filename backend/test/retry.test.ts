@@ -1,6 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
-import { withRetry, isTransientError, calculateDelay } from '../src/utils/retry';
+import {
+  withRetry,
+  isTransientError,
+  calculateDelay,
+  RetryContext,
+} from '../src/utils/retry';
 
 // Mock logger
 vi.mock('../src/utils/logger', () => ({
@@ -11,6 +16,25 @@ vi.mock('../src/utils/logger', () => ({
     debug: vi.fn(),
   },
 }));
+
+type ExtendedError = Error & {
+  statusCode?: number;
+  code?: string;
+};
+
+const createExtendedError = (
+  message: string,
+  overrides?: { statusCode?: number; code?: string }
+): ExtendedError => {
+  const error = new Error(message) as ExtendedError;
+  if (overrides?.statusCode !== undefined) {
+    error.statusCode = overrides.statusCode;
+  }
+  if (overrides?.code !== undefined) {
+    error.code = overrides.code;
+  }
+  return error;
+};
 
 describe('Retry Utility', () => {
   describe('isTransientError', () => {
@@ -84,8 +108,7 @@ describe('Retry Utility', () => {
     });
 
     it('should retry on transient error and succeed', async () => {
-      const error = new Error('Server error');
-      (error as any).statusCode = 500;
+      const error = createExtendedError('Server error', { statusCode: 500 });
 
       const fn = vi
         .fn()
@@ -102,8 +125,7 @@ describe('Retry Utility', () => {
     });
 
     it('should NOT retry on non-transient error', async () => {
-      const error = new Error('Bad request');
-      (error as any).statusCode = 400;
+      const error = createExtendedError('Bad request', { statusCode: 400 });
 
       const fn = vi.fn().mockRejectedValue(error);
 
@@ -112,8 +134,7 @@ describe('Retry Utility', () => {
     });
 
     it('should throw after max retries exhausted', async () => {
-      const error = new Error('Server error');
-      (error as any).statusCode = 500;
+      const error = createExtendedError('Server error', { statusCode: 500 });
 
       const fn = vi.fn().mockRejectedValue(error);
 
@@ -128,7 +149,7 @@ describe('Retry Utility', () => {
     });
 
     it('should skip retry if circuit breaker is open from start', async () => {
-      const context = {
+      const context: RetryContext = {
         isCircuitBreakerOpen: vi.fn().mockReturnValue(true),
       };
 
@@ -140,11 +161,10 @@ describe('Retry Utility', () => {
     });
 
     it('should check circuit breaker before each retry', async () => {
-      const error = new Error('Server error');
-      (error as any).statusCode = 500;
+      const error = createExtendedError('Server error', { statusCode: 500 });
 
       const fn = vi.fn().mockRejectedValue(error);
-      const context = {
+      const context: RetryContext = {
         isCircuitBreakerOpen: vi
           .fn()
           .mockReturnValueOnce(false) // First attempt
@@ -164,8 +184,7 @@ describe('Retry Utility', () => {
     });
 
     it('should use exponential backoff timing', async () => {
-      const error = new Error('Server error');
-      (error as any).statusCode = 500;
+      const error = createExtendedError('Server error', { statusCode: 500 });
 
       let attemptTimes: number[] = [];
       const fn = vi.fn().mockImplementation(() => {

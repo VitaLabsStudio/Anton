@@ -44,6 +44,25 @@ vi.mock('../src/utils/logger', () => ({
   },
 }));
 
+type ExtendedError = Error & {
+  statusCode?: number;
+  code?: number | string;
+};
+
+const createExtendedError = (
+  message: string,
+  overrides?: { statusCode?: number; code?: number | string }
+): ExtendedError => {
+  const error = new Error(message) as ExtendedError;
+  if (overrides?.statusCode !== undefined) {
+    error.statusCode = overrides.statusCode;
+  }
+  if (overrides?.code !== undefined) {
+    error.code = overrides.code;
+  }
+  return error;
+};
+
 describe('TwitterClient', () => {
   let client: TwitterClient;
 
@@ -133,8 +152,7 @@ describe('TwitterClient', () => {
       appConfig.dryRun = false;
       appConfig.requireApproval = false;
 
-      const error = new Error('Forbidden');
-      (error as any).statusCode = 403;
+      const error = createExtendedError('Forbidden', { statusCode: 403 });
       mockReply.mockRejectedValue(error);
 
       await expect(client.reply('123', 'policy violating content')).rejects.toThrow();
@@ -155,8 +173,7 @@ describe('TwitterClient', () => {
       appConfig.dryRun = false;
       appConfig.requireApproval = false;
 
-      const error = new Error('Forbidden');
-      (error as any).code = 403;
+      const error = createExtendedError('Forbidden', { code: 403 });
       mockReply.mockRejectedValue(error);
 
       await expect(client.reply('123', 'content')).rejects.toThrow();
@@ -210,8 +227,7 @@ describe('TwitterClient', () => {
 
   describe('Retry Logic Integration', () => {
     it('should retry on transient errors', async () => {
-      const transientError = new Error('Server error');
-      (transientError as any).statusCode = 500;
+      const transientError = createExtendedError('Server error', { statusCode: 500 });
 
       mockSearch
         .mockRejectedValueOnce(transientError)
@@ -227,8 +243,7 @@ describe('TwitterClient', () => {
     }, 10000); // Increase timeout for retry delays
 
     it('should not retry on client errors', async () => {
-      const clientError = new Error('Bad request');
-      (clientError as any).statusCode = 400;
+      const clientError = createExtendedError('Bad request', { statusCode: 400 });
 
       mockSearch.mockRejectedValue(clientError);
 

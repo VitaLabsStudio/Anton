@@ -170,7 +170,7 @@ export class TwitterClient implements IPlatformClient {
     };
   }
 
-  private logRateLimit(rateLimit?: TwitterRateLimit) {
+  private logRateLimit(rateLimit?: TwitterRateLimit): void {
     if (!rateLimit) {
       return;
     }
