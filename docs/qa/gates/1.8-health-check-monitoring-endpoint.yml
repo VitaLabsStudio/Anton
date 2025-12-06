@@ -1,38 +1,48 @@
 schema: 1
 story: '1.8'
 story_title: 'Health Check & Monitoring Endpoint'
-gate: PASS
-status_reason: 'All acceptance criteria now pass and TEST-001 no longer returns false positives: worker health requires both a recent timestamp and `posts_processed_count > 0`, so the detailed endpoint reflects actual activity before declaring healthy.'
+gate: FAIL
+status_reason: 'Worker heartbeat uses cumulative counts, so idle cycles still refresh lastActivityAt and produce false “healthy” reports; HealthCheckService eagerly builds platform clients and crashes when env vars are missing instead of degrading gracefully.'
 reviewer: 'Quinn (Test Architect)'
-updated: '2025-12-04T22:20:00Z'
+updated: '2025-12-04T00:30:00Z'
 
-top_issues: []
+top_issues:
+  - severity: high
+    description: 'Heartbeat uses cumulative saved count, causing false-positive worker health.'
+    suggested_action: 'Use per-cycle processed count and only update lastActivityAt when >0 posts are processed; add tests.'
+    suggested_owner: dev
+  - severity: high
+    description: 'HealthCheckService constructs platform clients at import time; missing env vars crash the API.'
+    suggested_action: 'Lazily instantiate or guard platform clients so missing credentials yield degraded statuses instead of process exit.'
+    suggested_owner: dev
 waiver: { active: false }
 
-quality_score: 100
+quality_score: 60
 
 evidence:
   tests_reviewed: 49
   tests_command: 'pnpm vitest --run backend/src/__tests__/services/health-check.test.ts backend/src/__tests__/api/routes/health.test.ts backend/src/__tests__/api/middleware/auth.test.ts backend/src/__tests__/api/middleware/ip-whitelist.test.ts'
-  risks_identified: 0
+  risks_identified: 2
   trace:
-    ac_covered: [1, 2, 3, 4, 5, 6]
-    ac_gaps: []
+    ac_covered: [1, 2, 3, 4, 5]
+    ac_gaps: [6]
 
 nfr_validation:
   security:
-    status: PASS
-    notes: 'Auth + IP whitelist fully protect `/health/detailed`.'
+    status: CONCERNS
+    notes: 'Process crashes on missing env vars instead of returning a degraded health status.'
   performance:
     status: PASS
     notes: 'Background caching keeps health checks cheap and deterministic.'
   reliability:
-    status: PASS
-    notes: 'TECH-001 requires both timestamp and `posts_processed_count > 0`, preventing false positives.'
+    status: FAIL
+    notes: 'False-positive heartbeat makes worker health unreliable.'
   maintainability:
-    status: PASS
-    notes: 'The implementation is modular and testable.'
+    status: CONCERNS
+    notes: 'Lack of guardrails for missing credentials and no regression test for the heartbeat bug.'
 
 recommendations:
-  immediate: []
+  immediate:
+    - action: 'Fix heartbeat counting and guard platform client construction; add regression tests covering idle cycles and missing env vars.'
+      refs: ['backend/src/workers/stream-monitor.ts', 'backend/src/services/health-check.ts']
   future: []

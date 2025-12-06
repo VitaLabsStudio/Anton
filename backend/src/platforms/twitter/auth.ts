@@ -48,4 +48,12 @@ export function validateTwitterCredentials(): TwitterCredentials {
   return credentials as TwitterCredentials;
 }
 
-export const twitterCredentials = validateTwitterCredentials();
+// Lazy initialization - only validate when accessed
+let _twitterCredentials: TwitterCredentials | undefined;
+
+export function getTwitterCredentials(): TwitterCredentials {
+  if (!_twitterCredentials) {
+    _twitterCredentials = validateTwitterCredentials();
+  }
+  return _twitterCredentials;
+}

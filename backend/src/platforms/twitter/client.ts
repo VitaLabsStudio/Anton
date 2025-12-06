@@ -7,7 +7,7 @@ import { logger } from '../../utils/logger.js';
 import { twitterRateLimiter } from '../../utils/rate-limiter.js';
 import { withRetry } from '../../utils/retry.js';
 
-import { twitterCredentials } from './auth.js';
+import { getTwitterCredentials } from './auth.js';
 import type { ClientStatus, IPlatformClient, Post } from '../IPlatformClient.js';
 
 interface SearchOptions {
@@ -37,9 +37,12 @@ type TwitterRateLimit = {
 export class TwitterClient implements IPlatformClient {
   private client: TwitterApi;
   private circuitBreaker: CircuitBreaker;
+  private currentRateLimit?: TwitterRateLimit;
 
   constructor() {
-    this.client = new TwitterApi(twitterCredentials);
+    // Validate credentials on construction (will throw if missing)
+    const credentials = getTwitterCredentials();
+    this.client = new TwitterApi(credentials);
 
     this.circuitBreaker = new CircuitBreaker({
       threshold: 5,
@@ -175,14 +178,56 @@ export class TwitterClient implements IPlatformClient {
       return;
     }
 
-    logger.info(
-      {
-        remaining: rateLimit.remaining,
-        limit: rateLimit.limit,
-        reset: new Date(rateLimit.reset * 1000),
-      },
-      'Twitter API rate limit status'
-    );
+    // Update current rate limit state
+    this.currentRateLimit = rateLimit;
+
+    // Calculate usage percentage
+    const usagePercent = ((rateLimit.limit - rateLimit.remaining) / rateLimit.limit) * 100;
+    const resetTime = new Date(rateLimit.reset * 1000);
+
+    // AC8: Emit >80% warnings
+    if (usagePercent >= 80) {
+      logger.warn(
+        {
+          remaining: rateLimit.remaining,
+          limit: rateLimit.limit,
+          usagePercent: usagePercent.toFixed(2),
+          reset: resetTime,
+        },
+        'Twitter API rate limit >80% used'
+      );
+    } else {
+      logger.info(
+        {
+          remaining: rateLimit.remaining,
+          limit: rateLimit.limit,
+          usagePercent: usagePercent.toFixed(2),
+          reset: resetTime,
+        },
+        'Twitter API rate limit status'
+      );
+    }
+
+    // AC8: Check if rate limit is exhausted
+    if (rateLimit.remaining === 0) {
+      const waitMs = rateLimit.reset * 1000 - Date.now();
+      if (waitMs > 0) {
+        logger.error(
+          {
+            resetTime,
+            waitSeconds: Math.ceil(waitMs / 1000),
+          },
+          'Twitter API rate limit exhausted - requests will be queued until reset'
+        );
+      }
+    }
+  }
+
+  /**
+   * Get current Twitter API rate limit status
+   */
+  getTwitterRateLimit(): TwitterRateLimit | undefined {
+    return this.currentRateLimit;
   }
 
   private mapToPost(tweet: TweetV2, authors: TwitterAuthor[]): Post {

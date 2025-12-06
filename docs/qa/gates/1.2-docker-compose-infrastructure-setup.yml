@@ -1,16 +1,24 @@
 schema: 1
 story: '1.2'
 story_title: 'Docker Compose Infrastructure Setup'
-gate: PASS
-status_reason: 'Implementation is high quality and addresses all critical/high risks (DATA-001, OPS-001). Minor concerns: Story file not updated by dev, minor pnpm version discrepancy.'
+gate: FAIL
+status_reason: 'Worker container fails to start (command points to missing backend/dist/workers/index.js), so the stack never reaches a healthy state; backup cadence required by AC12 is unscheduled.'
 reviewer: 'Quinn (Test Architect)'
-updated: '2025-12-04T10:00:00Z'
+updated: '2025-12-04T00:15:00Z'
 
-top_issues: []
+top_issues:
+  - severity: high
+    description: 'backend-worker entrypoint is invalid; container exits immediately.'
+    suggested_action: 'Point to the built worker (e.g., backend/dist/workers/stream-monitor.js) and verify build output.'
+    suggested_owner: dev
+  - severity: medium
+    description: 'AC12 backup cadence (daily 02:00) is not scheduled; scripts exist but are never invoked automatically.'
+    suggested_action: 'Add a cron/host scheduler invoking scripts/backup-db.sh nightly with retention enforcement.'
+    suggested_owner: dev
 
 waiver: { active: false }
 
-quality_score: 95
+quality_score: 60
 
 evidence:
   tests_reviewed: 1

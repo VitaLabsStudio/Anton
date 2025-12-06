@@ -1,24 +1,32 @@
 schema: 1
 story: '1.7'
 story_title: 'Stream Monitor Worker with Maximum Reach Filtering & Reddit Karma Strategy'
-gate: PASS
+gate: FAIL
 status_reason: >-
-  Implementation now meets the pipeline, gating behavior, and tests; KarmaGate caching avoids per-post Reddit calls.
+  Heartbeat updates use cumulative saved counts, so idle cycles still refresh lastActivityAt and mask outages; Docker worker entrypoint remains invalid (backend/dist/workers/index.js), preventing real execution.
 reviewer: 'Quinn (Test Architect)'
-updated: '2025-12-04T20:33:02Z'
+updated: '2025-12-04T00:25:00Z'
 
-top_issues: []
+top_issues:
+  - severity: high
+    description: 'Heartbeat uses cumulative saved count; idle cycles refresh lastActivityAt, causing false health reports.'
+    suggested_action: 'Pass per-cycle processed count and only update lastActivityAt when >0 posts processed; add tests.'
+    suggested_owner: dev
+  - severity: high
+    description: 'Docker worker entrypoint points to non-existent backend/dist/workers/index.js, so the worker never runs.'
+    suggested_action: 'Update entrypoint to dist/workers/stream-monitor.js (or equivalent) and verify end-to-end execution.'
+    suggested_owner: dev
 
 waiver: { active: false }
 
-quality_score: 95
+quality_score: 60
 
 evidence:
   tests_reviewed: 4
-  risks_identified: 0
+  risks_identified: 2
   trace:
-    ac_covered: [1, 2, 3, 4, 5, 6, 7]
-    ac_gaps: []
+    ac_covered: [1, 2, 3, 4, 5]
+    ac_gaps: [6, 7]
 
 nfr_validation:
   security:
@@ -28,14 +36,16 @@ nfr_validation:
     status: PASS
     notes: 'Keyword matcher/RegExp, spam filtering, and cached KarmaGate keep per-cycle work predictable and within rate limits.'
   reliability:
-    status: PASS
-    notes: 'PM2 supervision, telemetry logging, and idempotent Prisma upserts keep the worker resilient.'
+    status: FAIL
+    notes: 'False-positive heartbeat and missing entrypoint mean monitoring cannot be trusted.'
   maintainability:
-    status: PASS
-    notes: 'Workers, monitors, and guards stay modular and benefit from the new targeted tests.'
+    status: CONCERNS
+    notes: 'Missing regression tests for heartbeat/metrics and wrong entrypoint complicate operations.'
 
 recommendations:
-  immediate: []
+  immediate:
+    - action: 'Fix heartbeat to only update when posts are processed and correct the worker entrypoint; add tests.'
+      refs: ['backend/src/workers/stream-monitor.ts', 'docker/docker-compose.yml']
   future:
     - action: 'Expose a keyword list accessor so downstream monitors/workers do not read the matcher’s private config.'
       refs: ['backend/src/workers/keyword-matcher.ts:34', 'backend/src/workers/stream-monitor.ts:171']

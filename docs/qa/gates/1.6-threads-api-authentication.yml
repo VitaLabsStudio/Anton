@@ -1,41 +1,52 @@
 schema: 1
 story: '1.6'
 story_title: 'Threads API Authentication'
-gate: PASS
-status_reason: 'Vitest regression coverage now passes end-to-end, confirming token refresh, fallback monitoring, and the rate-limited Threads client before we move to Story 1.7.'
+gate: CONCERNS
+status_reason: 'Startup crashes when Threads env vars are missing (no disabled mode), background interval is never cleaned up, and no Threads client tests exist in this repo; AC1 still requires manual proof.'
 reviewer: 'Quinn (Test Architect)'
-updated: '2025-12-04T20:24:13Z'
+updated: '2025-12-04T00:40:00Z'
 
-top_issues: []
+top_issues:
+  - severity: high
+    description: 'Credential validation at module import crashes the app if THREADS_ACCESS_TOKEN is missing; no safe disabled path.'
+    suggested_action: 'Guard or lazily construct ThreadsClient and allow an explicit disabled mode.'
+    suggested_owner: dev
+  - severity: medium
+    description: 'Health-check interval from ThreadsClient constructor is never cleared.'
+    suggested_action: 'Clear interval on shutdown or move health checks to a managed scheduler.'
+    suggested_owner: dev
+  - severity: medium
+    description: 'No automated tests for Threads client/routes are present despite claims.'
+    suggested_action: 'Add unit/integration tests for refresh/retry path and /api/threads endpoints.'
+    suggested_owner: dev
 
 waiver: { active: false }
 
-quality_score: 90
+quality_score: 70
 
 evidence:
-  tests_reviewed:
-    - command: pnpm test
-      status: PASS
-      reason: 'Vitest now passes end-to-end (database constraints plus backend suites) so the Threads interceptor, fallback, and rate-limiting regressions are verified.'
-  risks_identified: 2
+  tests_reviewed: 0
+  risks_identified: 3
   trace:
-    ac_covered: [2,3,4,5,6,7,8,9]
-    ac_gaps: [1]
+    ac_covered: [2,3,4,5,6,7,8]
+    ac_gaps: [1,9]
 
 nfr_validation:
   security:
-    status: PASS
-    notes: 'Credential validation, masked logging, and `.gitleaks.toml` prevent EAA-style tokens from being committed.'
+    status: CONCERNS
+    notes: 'Crashes on missing env vars; need disabled path.'
   performance:
     status: PASS
     notes: 'Threads traffic is funneled through the Bottleneck rate limiter so the 200 req/hour cap is never exceeded.'
   reliability:
-    status: PASS
-    notes: 'Axios interceptor + CircuitBreaker + health checks keep the client resilient during 401s and downtime.'
+    status: CONCERNS
+    notes: 'Interval leak and missing tests reduce confidence.'
   maintainability:
-    status: PASS
-    notes: 'Shared `IPlatformClient`, Zod validation, and documented auth/rate limiter hooks keep platform code consistent.'
+    status: CONCERNS
+    notes: 'Lack of tests and safe startup guards increases maintenance risk.'
 
 recommendations:
-  immediate: []
+  immediate:
+    - action: 'Add safe disabled startup path, clear health-check interval, and write Threads client/route tests.'
+      refs: ['backend/src/platforms/threads', 'backend/src/api/routes/threads.ts']
   future: []

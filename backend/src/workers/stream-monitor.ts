@@ -23,6 +23,10 @@ import { prisma } from '../utils/prisma.js';
 import { logger } from '../utils/logger.js';
 import type { DetectedPost } from './types.js';
 import type { Platform, Prisma } from '@prisma/client';
+import {
+  analyzePostSignals,
+  type SignalAnalysisResult,
+} from './analysis/post-signal-analyzer.js';
 
 interface FunnelMetrics {
   scanned: number;
@@ -31,6 +35,9 @@ interface FunnelMetrics {
   saved: number;
   errors: number;
   karmaGateBlocked: number;
+  semanticFiltered: number;
+  analysisRuns: number;
+  totalAnalysisTimeMs: number;
 }
 
 interface WorkerConfig {
@@ -54,6 +61,9 @@ export class StreamMonitorWorker {
     saved: 0,
     errors: 0,
     karmaGateBlocked: 0,
+    semanticFiltered: 0,
+    analysisRuns: 0,
+    totalAnalysisTimeMs: 0,
   };
 
   constructor(config?: Partial<WorkerConfig>) {
@@ -165,6 +175,9 @@ export class StreamMonitorWorker {
    */
   private async scanCycle(): Promise<void> {
     const cycleStart = Date.now();
+
+    // Reset metrics at the start of each cycle to track per-cycle counts
+    this.resetMetrics();
 
     logger.info('StreamMonitorWorker: Starting scan cycle');
 
@@ -282,6 +295,25 @@ export class StreamMonitorWorker {
 
     this.funnelMetrics.passedSpamFilter++;
 
+    const analysisResult = await this.runSignalAnalysis(post);
+
+    if (
+      analysisResult &&
+      this.shouldSkipDueToSemantic(analysisResult.semantic)
+    ) {
+      this.funnelMetrics.semanticFiltered++;
+      logger.info(
+        {
+          postId: post.platformPostId,
+          semanticScore: analysisResult.semantic.score,
+          semanticContext: analysisResult.semantic.context,
+          pattern: analysisResult.semantic.detectedPattern,
+        },
+        'StreamMonitorWorker: Post excluded by semantic topic filter'
+      );
+      return;
+    }
+
     // Step 3: Karma Gate (Reddit only) - uses cached result from cycle pre-fetch
     if (post.platform === 'REDDIT' && cachedKarmaResult) {
       if (!cachedKarmaResult.allowed) {
@@ -374,6 +406,40 @@ export class StreamMonitorWorker {
     );
   }
 
+  private async runSignalAnalysis(post: DetectedPost): Promise<SignalAnalysisResult | null> {
+    try {
+      const result = await analyzePostSignals(post.content);
+      this.funnelMetrics.analysisRuns++;
+      this.funnelMetrics.totalAnalysisTimeMs += result.durationMs;
+
+      logger.debug(
+        {
+          postId: post.platformPostId,
+          durationMs: result.durationMs,
+          semanticScore: result.semantic.score,
+          semanticContext: result.semantic.context,
+          linguisticScore: result.linguistic.score,
+        },
+        'StreamMonitorWorker: Signal analysis results'
+      );
+
+      return result;
+    } catch (error) {
+      logger.error(
+        {
+          postId: post.platformPostId,
+          error,
+        },
+        'StreamMonitorWorker: Signal analysis failed'
+      );
+      return null;
+    }
+  }
+
+  private shouldSkipDueToSemantic(semantic: SignalAnalysisResult['semantic']): boolean {
+    return semantic.context === 'metaphor' && semantic.score <= 0.2;
+  }
+
   /**
    * Log funnel metrics summary
    */
@@ -382,11 +448,16 @@ export class StreamMonitorWorker {
       this.funnelMetrics.scanned > 0
         ? ((this.funnelMetrics.saved / this.funnelMetrics.scanned) * 100).toFixed(2)
         : '0.00';
+    const averageAnalysisMs =
+      this.funnelMetrics.analysisRuns > 0
+        ? (this.funnelMetrics.totalAnalysisTimeMs / this.funnelMetrics.analysisRuns).toFixed(1)
+        : '0';
 
     logger.info(
       {
         ...this.funnelMetrics,
         conversionRate: `${conversionRate}%`,
+        averageAnalysisMs,
       },
       'StreamMonitorWorker: Funnel metrics'
     );
@@ -453,6 +524,9 @@ export class StreamMonitorWorker {
       saved: 0,
       errors: 0,
       karmaGateBlocked: 0,
+      semanticFiltered: 0,
+      analysisRuns: 0,
+      totalAnalysisTimeMs: 0,
     };
   }
 }

@@ -44,4 +44,12 @@ export function validateThreadsCredentials(): ThreadsCredentialsStore {
   return new ThreadsCredentialsStore(token);
 }
 
-export const threadsCredentials = validateThreadsCredentials();
+// Lazy initialization - only validate when accessed
+let _threadsCredentials: ThreadsCredentialsStore | undefined;
+
+export function getThreadsCredentials(): ThreadsCredentialsStore {
+  if (!_threadsCredentials) {
+    _threadsCredentials = validateThreadsCredentials();
+  }
+  return _threadsCredentials;
+}

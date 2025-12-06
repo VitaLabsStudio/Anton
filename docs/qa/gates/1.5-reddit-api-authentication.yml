@@ -1,40 +1,54 @@
 schema: 1
 story: '1.5'
 story_title: 'Reddit API Authentication'
-gate: PASS
-status_reason: 'Implementation verified with all acceptance criteria satisfied and 72 backend vitest cases passing.'
+gate: CONCERNS
+status_reason: 'API crashes on missing Reddit env vars (no disabled mode), approval workflow is unimplemented (writes throw), and no Reddit client tests are present despite claims.'
 reviewer: 'Quinn (Test Architect)'
-updated: '2025-12-04T18:07:13Z'
+updated: '2025-12-04T00:35:00Z'
 
-top_issues: []
+top_issues:
+  - severity: high
+    description: 'Module-level credential validation crashes the backend when Reddit env vars are absent; no safe disablement.'
+    suggested_action: 'Guard client construction and allow REDDIT_ENABLED=false to skip wiring without throwing.'
+    suggested_owner: dev
+  - severity: medium
+    description: 'Approval workflow is not implemented; reply/comment paths throw when REQUIRE_APPROVAL is true.'
+    suggested_action: 'Implement approval flow or configurable bypass before enabling writes.'
+    suggested_owner: dev
+  - severity: medium
+    description: 'No automated tests for Reddit client/monitor/routes in this repo.'
+    suggested_action: 'Add unit/integration tests for search/reply and /api/reddit endpoints.'
+    suggested_owner: dev
 
 waiver: { active: false }
 
-quality_score: 100
+quality_score: 70
 
 evidence:
-  tests_reviewed: 72
-  risks_identified: 0
+  tests_reviewed: 0
+  risks_identified: 3
   trace:
-    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9]
-    ac_gaps: []
+    ac_covered: [1, 2, 3, 4, 5, 6, 7]
+    ac_gaps: [8, 9]
 
 nfr_validation:
   security:
-    status: PASS
-    notes: 'Credential validation, masking, and secret scanning guard against leakage while handleAuthError disables the integration on auth failures.'
+    status: CONCERNS
+    notes: 'Crashes on missing env vars instead of graceful degradation.'
   performance:
     status: PASS
-    notes: 'Multi-subreddit queries plus Bottleneck-driven scheduling keep Reddit usage under the documented limits.'
+    notes: 'Rate limiter/circuit present; needs tests.'
   reliability:
-    status: PASS
-    notes: 'Circuit breaker, rate limiter monitoring, and the REDDIT_ENABLED guard make the integration resilient.'
+    status: CONCERNS
+    notes: 'Missing approval flow and tests reduce operational confidence.'
   maintainability:
-    status: PASS
-    notes: 'Separated auth/client/config layers and documentation simplify ongoing maintenance.'
+    status: CONCERNS
+    notes: 'No tests and crash-on-missing-env path make support harder.'
 
 recommendations:
-  immediate: []
+  immediate:
+    - action: 'Implement safe disabled mode and approval workflow; add Reddit client/route tests.'
+      refs: ['backend/src/platforms/reddit', 'backend/src/api/routes/reddit.ts']
   future:
-    - action: 'Finish Story 1.8 (comment approval workflow) before running write operations without the REQUIRE_APPROVAL guard.'
+    - action: 'Finish Story 1.8 approval flow before enabling writes by default.'
       refs: ['docs/stories/1.8.story.md']

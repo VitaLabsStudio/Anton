@@ -165,6 +165,22 @@ docker exec -it antone-postgres psql -U antone
 - Zod validation schemas
 - Shared constants
 
+## Decision Engine (v2.1)
+
+- Segmented weights with Bayesian shrinkage, EVS logarithmic scaling, and interaction terms (SSS×ARS, EVS×TRS) with full validation.
+- Circuit-breaker wrapped signal fetches (opossum), conservative fallbacks, and uncertainty outputs (credible intervals, mode probabilities, review flags).
+- Observability: `GET /metrics` serves Prometheus counters/histogram plus JSON health (`cache`, `breakers`, `latency`); `/api/decisions` returns probabilities, confidence, and `segmentUsed`.
+- Thresholds live in `config/decision-thresholds*.yaml` (Zod validated). See `docs/architecture/decision-engine-math.md` for formulas and `docs/qa/decision-engine-troubleshooting.md` for ops playbooks.
+
+```typescript
+import { DecisionEngine, DEFAULT_THRESHOLDS } from '@/analysis/decision-engine';
+
+const engine = new DecisionEngine({ thresholds: DEFAULT_THRESHOLDS });
+const decision = await engine.analyzePost(post, author);
+
+console.log(decision.mode, decision.modeConfidence, decision.compositeCredibleInterval);
+```
+
 ## Git Hooks
 
 This project uses Husky for Git hooks:

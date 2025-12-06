@@ -51,4 +51,12 @@ export function validateRedditCredentials(): RedditCredentials {
   return credentials as RedditCredentials;
 }
 
-export const redditCredentials = validateRedditCredentials();
+// Lazy initialization - only validate when accessed
+let _redditCredentials: RedditCredentials | undefined;
+
+export function getRedditCredentials(): RedditCredentials {
+  if (!_redditCredentials) {
+    _redditCredentials = validateRedditCredentials();
+  }
+  return _redditCredentials;
+}

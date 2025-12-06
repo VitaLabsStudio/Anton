@@ -129,6 +129,15 @@ export class WorkerManager {
    └─► Select Archetype (if engaging)
          │
          ▼
+5b. CONTEXT ENRICHMENT (New Service)
+   │
+   ├─► Gate: score ≥0.65 **or** power user/competitor override; Budget Manager with tiered modes (Light/Standard/Full) and fallback
+   ├─► Fetch & build graph (root + parent chain + top siblings, platform-specific depth; stance-diverse, de-duplicated via clustering)
+   ├─► Token Optimization (dialogue normalization, prune low-signal siblings, summarization if >1500 tokens)
+   ├─► Re-evaluate decision (adjust score/mode; abort on hostile/mod-locked threads; detect “answered well” to avoid pile-on)
+   └─► Deliver structured ContextPack (must_keep/nice_to_have/constraints/strategy/red_flags, ≤900 tokens) + context_snapshot_id to Reply Generator
+         │
+         ▼
 6. GENERATION (Reply Generator)
    │
    ├─► DeepSeek R1 API call

@@ -1,0 +1,9 @@
+schema: 1
+story: '2.9'
+story_title: 'Temporal Intelligence Engine'
+gate: PASS
+status_reason: 'Logic approved, timezone note added.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-12-05T12:00:00Z'
+top_issues: []
+waiver: { active: false }

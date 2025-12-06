@@ -1,0 +1,7 @@
+# Staging-specific thresholds for higher fidelity testing
+thresholds:
+  confidenceThreshold: 0.68
+  minSampleSize: 80
+  reviewConfidenceDelta: 0.18
+  nearThresholdTolerance: 0.06
+  trsGate: 0.48

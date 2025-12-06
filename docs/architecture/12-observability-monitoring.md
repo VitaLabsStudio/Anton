@@ -202,3 +202,88 @@ export const alertRules: AlertRule[] = [
 ```
 
 ---
+
+---
+
+## 12.5 Decision Engine Observability
+
+### 12.5.1 Request tracing and structured logs
+
+Decision requests pass through `requestTrace()` (`backend/src/api/middleware/request-trace.ts`) before hitting the route handlers. The middleware:
+
+- Generates or honors `X-Request-ID`.
+- Injects the header into every response.
+- Logs request start/finish with a `pino` child logger that includes the `requestId`.
+- Stores the ID in the context so downstream handlers can correlate business logs.
+
+This keeps the decision engine logs searchable by request and satisfies the structured-logging requirement (request ID + JSON fields). Any additional middleware or cron-like worker that touches the decision flow should copy the same `requestId`.
+
+### 12.5.2 Metrics and health snapshot
+
+The decision engine exposes the following metrics (available via the configurable metrics adapter):
+
+- `decision_latency_count_total` plus the histogram buckets (`decision_latency_ms_bucket`), along with `decision_latency_ms_p95`, `decision_latency_ms_max`, `decision_latency_ms_sum`, and `decision_latency_ms_count` derived from the rolling latency histogram.
+- `decision_weight_cache_hits_total` / `decision_weight_cache_misses_total`: tracks cache effectiveness and is surfaced in `decisionEngine.getHealthSnapshot().cache`.
+- `decision_weights_validation_failure_total`: outlines invalid or stale weights (sum, non-finite values, interactions).
+- `decision_nan_infinity_detected_total`: increments when any signal, composite score, or uncertainty value is NaN/Infinity.
+- `decision_composite_score_out_of_range_total` / `decision_composite_score_clamped_total`: show how often clamps happen.
+- `decision_signal_score_clamped_total`: captures individual signal clamping events.
+- `decision_mode_confidence_bucket`: offers the probability assigned to each mode bucket so threshold drift can be monitored.
+- `decision_signal_failures_total`: track downstream failures per signal to feed alert rules.
+- `decision_breaker_state_open_total`, `decision_breaker_state_close_total`, `decision_breaker_state_failures_total`, and `decision_breaker_fallback_total` (per signal): emitted when opossum circuit breakers change state.
+
+The `/health` endpoint already pulls `decisionEngine.getHealthSnapshot()`, which packages:
+
+```json
+{
+  "cache": { "hits": 42, "misses": 3, "keys": 6, "ksize": 512, "vsize": 2048 },
+  "breakers": [
+    { "signal": "SSS", "state": "closed" },
+    { "signal": "EVS", "state": "half-open" }
+  ],
+  "latency": { "count": 1234, "p95": 312, "max": 660 }
+}
+```
+
+Alerting/monitoring dashboards can consume the health snapshot and the metrics above to answer questions such as “When did EVS start timing out?”, “Does the cache hit ratio stay above 90%?”, and “What is the current P95 decision latency?”.
+
+### 12.5.3 Monitoring dashboard queries
+
+Example PromQL queries worth exposing:
+
+```
+decision_latency_ms_sum / decision_latency_ms_count
+histogram_quantile(0.95, sum(rate(decision_latency_ms_bucket[5m])) by (le))
+sum(rate(decision_weight_cache_hits_total[5m])) /
+  (sum(rate(decision_weight_cache_hits_total[5m])) +
+    sum(rate(decision_weight_cache_misses_total[5m])))
+sum(rate(decision_breaker_state_open_total{signal="EVS"}[5m]))
+sum(rate(decision_nan_infinity_detected_total[5m]))
+sum(rate(decision_mode_confidence_bucket[5m])) by (mode)
+```
+
+JSON or Prometheus dashboards should pair the histograms with the `/health` snapshot (for the P95 and breaker states) and emit alerts when `mode_confidence_distribution{mode="HELPFUL"}` falls below a configurable floor or when `breaker_state_open` spikes for multiple signals.
+
+### 12.5.4 /metrics export
+
+`GET /metrics` now returns Prometheus-formatted text by default. The response includes the counters listed above (e.g., `decision_weight_cache_hits_total`, `decision_mode_confidence_bucket`, `decision_breaker_state_open_total`) with the classic `# HELP`/`# TYPE` headers, plus the latency histogram buckets (`decision_latency_ms_bucket`), and summary gauges for the P95, max, sum, and sample count. The final line is a `# HEALTH` comment that mirrors the cached stats, breaker states, and rolling latency snapshot from `decisionEngine.getHealthSnapshot()`, so humans can still spot garbage-in/garbage-out signals in the scrape.
+
+If you need the legacy JSON payload, append `?format=json` to the request and you will receive `{ metrics: [...], health: { cache, breakers, latency } }`, exactly as before.
+
+Sample Prometheus payload:
+```
+# HELP decision_weight_cache_hits_total Decisions served using cached weights
+# TYPE decision_weight_cache_hits_total counter
+decision_weight_cache_hits_total 42
+# HELP decision_latency_ms_bucket Decision latency histogram buckets (milliseconds)
+# TYPE decision_latency_ms_bucket histogram
+decision_latency_ms_bucket{le="50"} 10
+decision_latency_ms_bucket{le="100"} 37
+decision_latency_ms_bucket{le="+Inf"} 120
+# HELP decision_latency_ms_p95 95th percentile decision latency in milliseconds
+# TYPE decision_latency_ms_p95 gauge
+decision_latency_ms_p95 312
+# HEALTH {"cache":{"hits":42,"misses":3,"keys":6,"ksize":512,"vsize":2048},"breakers":[{"signal":"SSS","state":"closed"}],"latency":{"count":120,"p95":312,"max":660}}
+```
+
+Monitoring dashboards should scrape `/metrics` as usual (prometheus or Grafana), pairing the histogram/latency counters with the embedded `# HEALTH` snapshot for quick debugging without extra HTTP calls.

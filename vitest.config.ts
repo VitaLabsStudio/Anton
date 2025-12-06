@@ -6,8 +6,7 @@ export default defineConfig({
   // This prevents duplication and keeps paths centralized (TECH-006 mitigation)
   plugins: [tsconfigPaths()],
 
-  // Override esbuild target to avoid "Unrecognized target environment ES2024" warning
-  // ES2024 is not yet fully supported by esbuild, use es2022 which is stable
+  // Override esbuild target to ES2024
   esbuild: {
     target: 'es2022',
   },

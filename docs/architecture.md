@@ -158,6 +158,13 @@ Antone is an autonomous AI social media manager that operates 24/7 across Twitte
 │  │         └────────────────┼────────────────┼────────────────┘        │    │
 │  │                          ▼                                          │    │
 │  │  ┌─────────────────────────────────────────────────────────────┐   │    │
+│  │  │                CONTEXT INTELLIGENCE ENGINE                   │   │    │
+│  │  │  • Graph Traversal    • Conversation Vector Map              │   │    │
+│  │  │  • Participant Profiling • Dynamic Depth Retrieval           │   │    │
+│  │  │  • Sentiment Flow Analysis (Re-Evaluation Layer)             │   │    │
+│  │  └───────────────────────┬─────────────────────────────────────┘   │    │
+│  │                          ▼                                          │    │
+│  │  ┌─────────────────────────────────────────────────────────────┐   │    │
 │  │  │              DECISION SCORE & MODE SELECTION                 │   │    │
 │  │  │  • Safety Protocol    • Temporal Intelligence                │   │    │
 │  │  │  • Power User Detection • Competitive Detection              │   │    │
@@ -1286,6 +1293,10 @@ antone/
 │   │   │   ├── learning.json         # Learning system parameters (sample sizes, thresholds)
 │   │   │   └── env.ts                # Environment validation
 │   │   ├── analysis/
+│   │   │   ├── context-engine/           # Context Intelligence Layer
+│   │   │   │   ├── service.ts            # Main service logic
+│   │   │   │   ├── graph-walker.ts       # Platform graph retrieval
+│   │   │   │   └── vector-mapper.ts      # Tone & Sentiment mapping
 │   │   │   ├── signal-1-linguistic.ts    # Solution-Seeking Score
 │   │   │   ├── signal-2-author.ts        # Author Relationship Score
 │   │   │   ├── signal-3-velocity.ts      # Engagement Velocity Score

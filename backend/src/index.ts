@@ -6,9 +6,13 @@ import { redditRouter } from './api/routes/reddit.js';
 import { threadsRouter } from './api/routes/threads.js';
 import { twitterRouter } from './api/routes/twitter.js';
 import { healthRouter } from './api/routes/health.js';
+import { decisionsRouter } from './api/routes/decisions.js';
+import { metricsRouter } from './api/routes/metrics.js';
+import { requestTrace } from './api/middleware/request-trace.js';
 
 const app = new Hono();
 
+app.use('*', requestTrace);
 app.use('*', logger());
 
 app.get('/', (c) => {
@@ -19,6 +23,8 @@ app.route('/api/twitter', twitterRouter);
 app.route('/api/reddit', redditRouter);
 app.route('/api/threads', threadsRouter);
 app.route('/health', healthRouter);
+app.route('/metrics', metricsRouter);
+app.route('/api/decisions', decisionsRouter);
 
 const port = Number(process.env['PORT']) || 3001;
 const hostname = '0.0.0.0'; // OPS-001: Required for Docker health checks

@@ -1,68 +1,75 @@
 schema: 1
 story: '1.4'
 story_title: 'Twitter/X API Authentication'
-gate: PASS
-status_reason: 'All 10 acceptance criteria fully met. Implementation is production-grade with 60 comprehensive tests passing. Non-blocking rate limiter, intelligent circuit breaker, retry logic with exponential backoff, bearer token support, and complete monitoring endpoints. Security hardening includes credential validation, secret scanning, and dry-run safety features. Performance verified through load testing. Ready for production deployment.'
+gate: CONCERNS
+status_reason: 'AC8 is only partially implemented: no 80% budget warnings or retry-after-reset behavior, and no tests cover rate limiting/circuit paths; process fails closed on missing env without a safe disabled mode.'
 reviewer: 'Quinn (Test Architect)'
-updated: '2025-12-04T20:00:00Z'
+updated: '2025-12-04T00:20:00Z'
 
 top_issues:
-  - severity: low
-    finding: 'Gitleaks rules created but not tested with fake credentials (Task 5 testing part)'
-    suggested_action: 'Create test file with fake Twitter credentials and verify gitleaks detection works'
-  - severity: low
-    finding: 'CONTRIBUTING.md not updated with gitleaks testing instructions (Task 5 docs part)'
-    suggested_action: 'Document how to test secret scanning rules for future contributors'
+  - severity: high
+    finding: 'Rate limiter does not track rate-limit headers or emit the required 80% warnings/backoff; exceeds AC8.'
+    suggested_action: 'Track Twitter rate-limit headers, warn at >80%, and queue/backoff until reset when limits are hit.'
+    suggested_owner: dev
+  - severity: medium
+    finding: 'No automated tests exercise Twitter client, rate limiter, circuit breaker, or endpoints despite AC12 expectations.'
+    suggested_action: 'Add unit/integration tests for search/reply, rate-limit behavior, circuit transitions, and /api/twitter routes.'
+    suggested_owner: dev
+  - severity: medium
+    finding: 'Module-level credential validation crashes the API when env vars are absent; no safe dry-run/disabled path.'
+    suggested_action: 'Allow a guarded startup path that skips Twitter wiring when credentials are missing.'
+    suggested_owner: dev
 
 waiver: { active: false }
 
-quality_score: 95 # 100 - (2 * 2.5 for low-severity items)
-expires: '2025-12-18T00:00:00Z' # 2 weeks from review
+quality_score: 70
+expires: '2025-12-18T00:00:00Z'
 
 evidence:
-  tests_reviewed: 60
-  test_files: 5
+  tests_reviewed: 0
+  test_files: 0
   risks_identified: 4
-  risks_mitigated: 4
+  risks_mitigated: 2
   trace:
-    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    ac_gaps: []
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 9, 10]
+    ac_gaps: [8]
 
 nfr_validation:
   security:
-    status: PASS
-    notes: 'Excellent security posture: credential validation with masked logging, gitleaks secret scanning rules, bearer token support, dry-run mode for testing'
+    status: CONCERNS
+    notes: 'Fails closed on missing env vars (crashes process) instead of a safe disabled mode.'
   performance:
-    status: PASS
-    notes: 'Production-grade non-blocking rate limiter using bottleneck library. Load tests verify event loop remains responsive under concurrent load. Latency impact minimal.'
+    status: CONCERNS
+    notes: 'AC8 budget warnings/backoff not implemented; no telemetry on reset times.'
   reliability:
-    status: PASS
-    notes: 'Robust error handling: circuit breaker with intelligent 4xx filtering, retry logic with exponential backoff and jitter, integration between circuit breaker and retry mechanism'
+    status: CONCERNS
+    notes: 'Lack of tests and crash-on-missing-env behavior reduce operational reliability.'
   maintainability:
-    status: PASS
-    notes: 'Clean code architecture with excellent separation of concerns. Comprehensive test coverage (60 tests). Good logging throughout. Clear error messages.'
+    status: CONCERNS
+    notes: 'Missing tests for critical flows; rate-limit telemetry is absent, making ops debugging harder.'
 
 risk_summary:
   totals:
     critical: 0
-    high: 0
-    medium: 0
-    low: 2
-  highest: low
+    high: 1
+    medium: 2
+    low: 0
+  highest: high
   recommendations:
-    must_fix: []
+    must_fix:
+      - 'Implement rate-limit budget tracking/backoff and add tests for Twitter client/rate limiter/circuit breaker'
     monitor:
-      - 'Test gitleaks rules periodically as Twitter API credential formats may evolve'
+      - 'Add a safe disabled path for missing credentials to avoid startup crashes'
 
 recommendations:
-  immediate: []
+  immediate:
+    - action: 'Implement AC8 rate-limit budget tracking, >80% warnings, and reset-aware queuing/backoff.'
+      refs: ['backend/src/utils/rate-limiter.ts', 'backend/src/platforms/twitter/client.ts']
+    - action: 'Add unit/integration tests for Twitter client, rate limiter, circuit breaker, and /api/twitter routes.'
+      refs: ['backend/src/platforms/twitter', 'backend/src/utils/rate-limiter.ts', 'backend/src/utils/circuit-breaker.ts']
   future:
-    - action: 'Test gitleaks configuration with fake credentials'
-      refs: ['.gitleaks.toml']
-    - action: 'Add gitleaks testing instructions to CONTRIBUTING.md'
-      refs: ['CONTRIBUTING.md']
-    - action: 'Consider adding credential rotation documentation in .env.example'
-      refs: ['.env.example']
+    - action: 'Allow a safe disabled/dry-run path when credentials are missing to avoid startup crashes.'
+      refs: ['backend/src/platforms/twitter/auth.ts', 'backend/src/platforms/twitter/client.ts']
 
 history:
   - at: '2025-12-02T12:00:00Z'

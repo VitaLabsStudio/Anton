@@ -1,0 +1,7 @@
+# Production thresholds tuned for safety and reliability
+thresholds:
+  confidenceThreshold: 0.72
+  minSampleSize: 120
+  reviewConfidenceDelta: 0.15
+  nearThresholdTolerance: 0.05
+  trsGate: 0.5

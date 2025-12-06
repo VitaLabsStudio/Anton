@@ -1,0 +1,9 @@
+schema: 1
+story: '2.12'
+story_title: 'Competitive Intelligence Detector'
+gate: PASS
+status_reason: 'Approved with rate limit advice.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-12-05T12:00:00Z'
+top_issues: []
+waiver: { active: false }

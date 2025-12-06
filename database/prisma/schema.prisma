@@ -173,8 +173,16 @@ model Decision {
   safetyFlags            String[]               @map("safety_flags")
   signalsJson            Json?                  @map("signals_json")
   temporalContext        Json?                  @map("temporal_context")
-  competitorDetected     Boolean                @default(false) @map("competitor_detected")
+  competitorDetected     String?                @map("competitor_detected")
   isPowerUser            Boolean                @default(false) @map("is_power_user")
+  segmentUsed            String?                @map("segment_used")
+  decisionLogicVersion   String                 @default("v2.1") @map("decision_logic_version")
+  needsReview            Boolean                @default(false) @map("needs_review")
+  reviewReason           String?                @map("review_reason")
+  compositeCredibleIntervalLower Float          @map("composite_score_lower")
+  compositeCredibleIntervalUpper Float          @map("composite_score_upper")
+  modeConfidence         Float                  @map("mode_confidence")
+  modeProbabilities      Json?                  @map("mode_probabilities")
   experimentId           String?                @map("experiment_id")
   experimentVariant      String?                @map("experiment_variant")
   isRandomizedExperiment Boolean                @default(false) @map("is_randomized_experiment")
@@ -188,9 +196,11 @@ model Decision {
   replies                Reply[]
 
   @@index([createdAt])
+  @@index([createdAt, compositeScore, mode, needsReview], map: "idx_decisions_composite_mode_needs_review")
   @@index([experimentVariant])
   @@index([isRandomizedExperiment])
   @@index([mode])
+  @@index([postId], map: "idx_decisions_post_id")
   @@index([compositeScore])
   @@map("decisions")
 }
@@ -371,6 +381,7 @@ model SegmentedWeight {
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@unique([segmentType, segmentKey])
+  @@index([segmentType, segmentKey, sampleSize], map: "idx_segment_weights_sample")
   @@map("segmented_weights")
 }
 

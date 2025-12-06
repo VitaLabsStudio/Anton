@@ -5,7 +5,7 @@ import { CircuitBreaker } from '../../utils/circuit-breaker.js';
 import { logger } from '../../utils/logger.js';
 import { redditRateLimiter } from '../../utils/rate-limiter.js';
 
-import { redditCredentials } from './auth.js';
+import { getRedditCredentials } from './auth.js';
 import {
   getApprovedSubredditConfigs,
   validateSubreddits,
@@ -49,11 +49,13 @@ export class RedditClient implements IPlatformClient {
   };
 
   constructor() {
+    // Validate credentials on construction (will throw if missing)
+    const credentials = getRedditCredentials();
     this.client = new Snoowrap({
-      userAgent: redditCredentials.userAgent,
-      clientId: redditCredentials.clientId,
-      clientSecret: redditCredentials.clientSecret,
-      refreshToken: redditCredentials.refreshToken,
+      userAgent: credentials.userAgent,
+      clientId: credentials.clientId,
+      clientSecret: credentials.clientSecret,
+      refreshToken: credentials.refreshToken,
     });
 
     this.circuitBreaker = new CircuitBreaker({

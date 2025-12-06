@@ -11,7 +11,7 @@ import { CircuitBreaker } from '../../utils/circuit-breaker.js';
 import { logger } from '../../utils/logger.js';
 import { threadsRateLimiter } from '../../utils/rate-limiter.js';
 
-import { threadsCredentials } from './auth.js';
+import { getThreadsCredentials } from './auth.js';
 import {
   ZodThreadsSearchResponse,
   toInternalPost,
@@ -30,9 +30,12 @@ export class ThreadsClient implements IPlatformClient {
   private client: AxiosInstance;
   private circuitBreaker: CircuitBreaker;
   private isAvailable = true;
-  private healthCheckHandle: ReturnType<typeof setInterval>;
+  private healthCheckHandle?: ReturnType<typeof setInterval>;
 
   constructor() {
+    // Validate credentials on construction (will throw if missing)
+    const credentials = getThreadsCredentials();
+
     this.circuitBreaker = new CircuitBreaker({
       threshold: 5,
       timeout: THREADS_CIRCUIT_TIMEOUT_MS,
@@ -45,7 +48,7 @@ export class ThreadsClient implements IPlatformClient {
 
     this.client.interceptors.request.use((config) => {
       config.headers = config.headers ?? {};
-      config.headers['Authorization'] = `Bearer ${threadsCredentials.accessToken}`;
+      config.headers['Authorization'] = `Bearer ${credentials.accessToken}`;
       return config;
     });
 
@@ -58,6 +61,17 @@ export class ThreadsClient implements IPlatformClient {
       () => this.performHealthCheck(),
       THREADS_HEALTH_CHECK_MS
     );
+  }
+
+  /**
+   * Cleanup method to stop health check interval
+   */
+  shutdown(): void {
+    if (this.healthCheckHandle) {
+      clearInterval(this.healthCheckHandle);
+      this.healthCheckHandle = undefined;
+      logger.info('ThreadsClient health check interval cleared');
+    }
   }
 
   private async performHealthCheck(): Promise<void> {
@@ -131,6 +145,7 @@ export class ThreadsClient implements IPlatformClient {
   private async refreshToken(): Promise<string> {
     const clientId = process.env['THREADS_CLIENT_ID'];
     const clientSecret = process.env['THREADS_CLIENT_SECRET'];
+    const credentials = getThreadsCredentials();
 
     if (!clientId || !clientSecret) {
       throw new Error('Missing Threads client id/secret for token refresh');
@@ -144,7 +159,7 @@ export class ThreadsClient implements IPlatformClient {
           grant_type: 'fb_exchange_token',
           client_id: clientId,
           client_secret: clientSecret,
-          fb_exchange_token: threadsCredentials.accessToken,
+          fb_exchange_token: credentials.accessToken,
         },
       }
     );
@@ -155,7 +170,7 @@ export class ThreadsClient implements IPlatformClient {
       throw new Error('Token refresh response missing access_token');
     }
 
-    threadsCredentials.update(newToken);
+    credentials.update(newToken);
     process.env['THREADS_ACCESS_TOKEN'] = newToken;
 
     logger.info(

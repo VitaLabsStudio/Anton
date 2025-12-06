@@ -1,0 +1,9 @@
+schema: 1
+story: '2.11'
+story_title: 'Power User Detection & Prioritization'
+gate: PASS
+status_reason: 'Approved with persistence mechanism note.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-12-05T12:00:00Z'
+top_issues: []
+waiver: { active: false }

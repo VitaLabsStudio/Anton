@@ -1,24 +1,28 @@
 schema: 1
 story: '1.1'
 story_title: 'Project Setup & Monorepo Structure'
-gate: CONCERNS
-status_reason: 'The story provides an excellent and thorough plan for implementation. However, the gate status is set to CONCERNS because the work is not yet implemented, and the critical risks identified have not yet been mitigated. The story is ready for development to begin.'
+gate: FAIL
+status_reason: 'Toolchain is out of contract: Node 22/pnpm 9.15, ES2022 targets, and Prisma 6.1 violate the ACs calling for Node 24.11.1, pnpm 10, ES2024, and Prisma 7.0.1.'
 reviewer: 'Quinn (Test Architect)'
-updated: '2025-12-02T12:00:00Z'
+updated: '2025-12-04T00:00:00Z'
 
 top_issues:
   - severity: high
-    description: 'CRITICAL RISK (TECH-001) for Monorepo Workspace Resolution is not yet mitigated.'
-    suggestion: 'Developer must follow the mitigation and implementation plan in the story precisely.'
+    description: 'Node/pnpm baseline does not meet AC (Node 24.11.1 + pnpm 10 required; repo uses Node 22/.nvmrc and pnpm 9.15.0).'
+    suggested_action: 'Bump engines/.nvmrc/packageManager and re-install under the correct toolchain.'
     suggested_owner: dev
   - severity: high
-    description: 'HIGH RISK (OPS-001) of Git Hooks Blocking Developer Workflow is not yet mitigated.'
-    suggestion: 'Developer must follow the mitigation and implementation plan in the story precisely.'
+    description: 'TypeScript target lowered to ES2022 in tsconfig/vitest; AC requires ES2024 across the toolchain.'
+    suggested_action: 'Raise TS/esbuild targets to ES2024 and validate builds.'
+    suggested_owner: dev
+  - severity: high
+    description: 'Prisma pinned to 6.1.0 instead of required 7.0.1 (AC10/AC12 dependency set).'
+    suggested_action: 'Upgrade Prisma packages to 7.0.1 and regenerate client/migrations.'
     suggested_owner: dev
 
 waiver: { active: false }
 
-quality_score: 50 # 100 - (2 * 10 for CONCERNS) - (3 * 10 for HIGH risk issues)
+quality_score: 40
 
 evidence:
   tests_reviewed: 0

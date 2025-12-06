@@ -154,33 +154,23 @@
 
 ---
 
-## Story 2.7: Post Queue Processor Service
+## Story 2.7: Post Queue Processor Service (Context-Aware)
 
 **As a** the system,  
-**I want** a service that continuously processes unprocessed posts from the queue,  
-**so that** posts detected by the Stream Monitor are analyzed and decisions are made asynchronously.
+**I want** a service that continuously processes queued posts, gates deep context retrieval for high-potential candidates, and re-evaluates decisions before dispatch,  
+**so that** I only move forward on threads where I understand the full conversation and the chance of a positive outcome is high.
 
 **Acceptance Criteria:**
 
-1. Service created at `@backend/services/queue-processor.ts`
-2. Service runs on interval (every 30 seconds) querying `posts` WHERE `processed_at IS NULL`
-3. For each post:
-   - Execute all 4 signals in parallel (Promise.all for speed)
-   - Run Safety Protocol check
-   - Calculate Decision Score and select mode
-   - Write decision to `decisions` table
-   - Update post with `processed_at` timestamp
-4. **Error handling with retry logic**:
-   - Failed posts marked with `error_message` in posts table
-   - Retry strategy: Max 3 attempts with exponential backoff (1s → 2s → 4s)
-   - Permanent failures (4xx errors): No retry, mark as failed
-   - Transient failures (5xx, timeout): Retry with backoff
-   - Circuit breaker: After 5 consecutive failures, pause processing for 30s
-   - Error tracking: Increment `error_count` field, log to structured logger with request_id
-5. Service logs throughput metrics (posts processed per minute)
-6. Integration test: Seed queue with 10 posts, verify all processed within 1 minute
-7. Service deployed as Docker Compose persistent service with restart policy
-8. Dashboard shows queue depth metric (unprocessed posts count)
+1. Service created at `@backend/services/queue-processor.ts` with 30s interval, batch size 20, optimistic locking on `posts` where `processed_at IS NULL`.
+2. **Double-Check Workflow**:
+   - Step 1: Initial analysis runs 4 signals + Safety + Power User + Competitive detectors in parallel. If `score < 0.65` and no override flags, mark `DISENGAGED_LOW_POTENTIAL`. Safety override always wins (`DISENGAGED_SAFETY`).
+   - Step 2: Context Gate triggers when `score >= 0.65` **or** `power_user` **or** `competitor_detected`. Invoke `ContextEngine.evaluate(post, decision)` with 6s timeout. Tiered modes (Light/Standard/Full) chosen by value gate and budget; budget-aware ordering stops early on low marginal value; downgrade to Light on timeout/budget exhaustion and annotate `context_budget_state`. On failure/timeout, continue with initial decision but set `context_status = FAILED`.
+   - Step 3: Re-evaluate using `ContextResult`: apply `adjustedScore`, `recommendation`, and updated mode (e.g., Defensive/Hybrid). If `ABORT`, mark `DISENGAGED_CONTEXT_MISMATCH` with `abort_reason`. Attach `context_snapshot_id` when available.
+   - Step 4: Finalize: persist decision + context metadata, update post `processed_at`, enqueue for Reply Generation when `PROCEED` or `ADJUST_MODE`.
+3. **Resilience**: Retry transient platform/context API failures (max 3, 1s→4s backoff); circuit breaker per platform and per context client (trip after 5 consecutive errors, cool-down 30s); structured error logging with `request_id`.
+4. **Throughput & Budgeting**: Sustains 50 posts/min via concurrency; context step limited to ~top 20% of posts by gate; records `context_cost` (API + tokens) and budget utilization; metrics include drop-off at each stage.
+5. **Dashboard/Monitoring**: Queue depth metric, context hit rate, and abort reason distribution visible on dashboard endpoints.
 
 ---
 
@@ -344,5 +334,37 @@
 10. Dashboard tracking: Competitor share of voice, Vita mention rate, competitive conversion opportunities
 11. Unit tests validate competitor detection across 50+ mention variations
 12. Market intelligence logged: Which competitors are most discussed? What complaints do users have?
+
+---
+
+## Story 2.13: Context Enrichment & Conversation Retrieval Engine
+
+**As a** the decision engine,
+**I want** to retrieve the full conversational context (parent posts, thread depth, sibling comments) for high-potential posts,
+**so that** the reply generator understands *who* it is replying to, *what* they are discussing, and the *sentiment* of the active conversation.
+
+**Acceptance Criteria:**
+
+1. **Module & Gate**: `@backend/analysis/context-intel/service.ts` with gate triggers for `decision.score >= 0.65`, power-user, competitor, or manual override; includes Budget Manager that falls back to Light Mode (root + parent) when platform/tokens budgets are exhausted.
+2. **Platform Graph Walkers (Dynamic Depth)**:
+   - **Twitter/X**: Traverse `conversation_id`; fetch root + parent chain (max depth 4), top 5 siblings by likes/recency; add author influence (followers, verified) on nodes.
+   - **Reddit**: Include submission (title/body), parent chain (depth ≤4), and top 3 siblings by score; capture subreddit moderation hints (locked/removed) when present.
+   - **Threads**: Fetch root + parent chain (depth ≤3) and top 5 replies by likes; degrade gracefully to root + target when API is partial.
+3. **ConversationGraph & Digest**:
+   - Nodes include author/handle, influence, role (OP/Target/Sibling), stance, sentiment (-1..1), toxicity, engagement, depth, isTarget.
+   - Produce `ContextDigest` with conversation summary (≤220 words), tone flow vector, participant roles, repeated-suggestion list, competitor mentions, and moderation risk flags; provide `promptPayload` formatted dialogue lines.
+4. **Token Optimization & Summarization**:
+   - Normalize to dialogue (strip URLs/mentions, dedupe near-identical siblings).
+   - If raw context >1500 tokens, compress with cheap model (≤600 tokens) after dropping low-signal nodes; track `tokens_in/out` and summarization path.
+5. **Decision Re-Evaluation & Safety**:
+   - Output `adjustedScore` + `recommendation` (`PROCEED | ADJUST_MODE | ABORT | DEFER`) and context-informed mode changes (e.g., Defensive/Hybrid on competitor-heavy threads).
+   - Rerun thread-level safety; any hard safety hit forces `ABORT` with `abort_reason`.
+   - Deliver `ContextPack` for Reply Generator capped at ≤900 tokens with strategy notes (who to ignore/acknowledge).
+6. **Caching & Observability**: Redis cache TTL 30 min keyed by `root+target+platform`; optional `context_snapshots` persistence referenced on decisions; metrics emitted for cache hit rate, API calls, token spend, and abort reasons; unit tests cover gate logic, walker selection, summarization path, and re-evaluation adjustments.
+7. **Signal Quality & Cost Controls**:
+   - Tiered modes (Light/Standard/Full) with budget-aware ordering; auto-downgrade on timeout or budget exhaustion.
+   - Similarity clustering and stance diversity for sibling selection; detect “answered well” (upvotes + OP acknowledgement) to push additive replies or disengage.
+   - Freshness bias (prefer recent replies, downweight stale); structured prompt pack schema with must_keep/nice_to_have/constraints/strategy/red_flags and evidence bullets.
+   - Outcome-linked tuning: track context uplift by platform/daypart/author tier to auto-tune depth and gate thresholds based on observed lift.
 
 ---

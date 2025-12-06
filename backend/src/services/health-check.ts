@@ -13,11 +13,13 @@
  * - Pipeline: Data integrity check (TECH-002)
  */
 
+import NodeCache from 'node-cache';
 import { prisma } from '../utils/prisma.js';
 import { logger } from '../utils/logger.js';
 import { TwitterClient } from '../platforms/twitter/client.js';
 import { RedditClient } from '../platforms/reddit/client.js';
 import { ThreadsClient } from '../platforms/threads/client.js';
+import { decisionEngine } from '../analysis/decision-engine.js';
 
 export interface ComponentStatus {
   healthy: boolean;
@@ -36,6 +38,7 @@ export interface HealthCheckResult {
     threads: ComponentStatus;
     worker: ComponentStatus;
     pipeline: ComponentStatus;
+    decisionEngine: ComponentStatus;
   };
   metadata?: {
     version: string;
@@ -50,9 +53,14 @@ export class HealthCheckService {
   private readonly workerHeartbeatThresholdMs: number;
   private readonly pipelineThresholdMs: number;
 
-  private twitterClient: TwitterClient;
-  private redditClient: RedditClient;
-  private threadsClient: ThreadsClient;
+  private twitterClient?: TwitterClient;
+  private redditClient?: RedditClient;
+  private threadsClient?: ThreadsClient;
+
+  // Injection for testing
+  private readonly injectedTwitterClient?: TwitterClient;
+  private readonly injectedRedditClient?: RedditClient;
+  private readonly injectedThreadsClient?: ThreadsClient;
 
   constructor(options?: {
     checkIntervalMs?: number;
@@ -66,10 +74,10 @@ export class HealthCheckService {
     this.workerHeartbeatThresholdMs = options?.workerHeartbeatThresholdMs ?? 300_000; // 5min default
     this.pipelineThresholdMs = options?.pipelineThresholdMs ?? 3_600_000; // 1hr default
 
-    // Initialize platform clients (allow injection for testing)
-    this.twitterClient = options?.twitterClient ?? new TwitterClient();
-    this.redditClient = options?.redditClient ?? new RedditClient();
-    this.threadsClient = options?.threadsClient ?? new ThreadsClient();
+    // Store injected clients for testing (lazy initialization for production)
+    this.injectedTwitterClient = options?.twitterClient;
+    this.injectedRedditClient = options?.redditClient;
+    this.injectedThreadsClient = options?.threadsClient;
 
     // Start background refresh
     this.startBackgroundRefresh();
@@ -95,6 +103,66 @@ export class HealthCheckService {
     }
 
     return this.lastResult!;
+  }
+
+  /**
+   * Lazily initialize Twitter client (or return injected one)
+   */
+  private getTwitterClient(): TwitterClient | null {
+    if (this.injectedTwitterClient) {
+      return this.injectedTwitterClient;
+    }
+
+    if (!this.twitterClient) {
+      try {
+        this.twitterClient = new TwitterClient();
+      } catch (error) {
+        logger.warn({ error }, 'HealthCheckService: Failed to initialize Twitter client');
+        return null;
+      }
+    }
+
+    return this.twitterClient;
+  }
+
+  /**
+   * Lazily initialize Reddit client (or return injected one)
+   */
+  private getRedditClient(): RedditClient | null {
+    if (this.injectedRedditClient) {
+      return this.injectedRedditClient;
+    }
+
+    if (!this.redditClient) {
+      try {
+        this.redditClient = new RedditClient();
+      } catch (error) {
+        logger.warn({ error }, 'HealthCheckService: Failed to initialize Reddit client');
+        return null;
+      }
+    }
+
+    return this.redditClient;
+  }
+
+  /**
+   * Lazily initialize Threads client (or return injected one)
+   */
+  private getThreadsClient(): ThreadsClient | null {
+    if (this.injectedThreadsClient) {
+      return this.injectedThreadsClient;
+    }
+
+    if (!this.threadsClient) {
+      try {
+        this.threadsClient = new ThreadsClient();
+      } catch (error) {
+        logger.warn({ error }, 'HealthCheckService: Failed to initialize Threads client');
+        return null;
+      }
+    }
+
+    return this.threadsClient;
   }
 
   /**
@@ -137,10 +205,11 @@ export class HealthCheckService {
       this.checkThreads(),
       this.checkWorker(),
       this.checkPipeline(),
+      this.checkDecisionEngine(),
     ]);
 
     // Determine overall status
-    const components = { database, twitter, reddit, threads, worker, pipeline };
+    const components = { database, twitter, reddit, threads, worker, pipeline, decisionEngine };
     const unhealthyCount = Object.values(components).filter((c) => !c.healthy).length;
 
     let status: 'healthy' | 'degraded' | 'unhealthy';
@@ -215,7 +284,18 @@ export class HealthCheckService {
     const start = Date.now();
 
     try {
-      const verification = await this.twitterClient.verifyCredentials();
+      const client = this.getTwitterClient();
+      if (!client) {
+        const latency = Date.now() - start;
+        return {
+          healthy: false,
+          latency,
+          message: 'Twitter client unavailable (missing env vars)',
+          lastCheck: new Date(),
+        };
+      }
+
+      const verification = await client.verifyCredentials();
       const latency = Date.now() - start;
 
       return {
@@ -244,7 +324,18 @@ export class HealthCheckService {
     const start = Date.now();
 
     try {
-      const verification = await this.redditClient.verifyCredentials();
+      const client = this.getRedditClient();
+      if (!client) {
+        const latency = Date.now() - start;
+        return {
+          healthy: false,
+          latency,
+          message: 'Reddit client unavailable (missing env vars)',
+          lastCheck: new Date(),
+        };
+      }
+
+      const verification = await client.verifyCredentials();
       const latency = Date.now() - start;
 
       return {
@@ -273,7 +364,18 @@ export class HealthCheckService {
     const start = Date.now();
 
     try {
-      const verification = await this.threadsClient.verifyCredentials();
+      const client = this.getThreadsClient();
+      if (!client) {
+        const latency = Date.now() - start;
+        return {
+          healthy: false,
+          latency,
+          message: 'Threads client unavailable (missing env vars)',
+          lastCheck: new Date(),
+        };
+      }
+
+      const verification = await client.verifyCredentials();
       const latency = Date.now() - start;
 
       return {
@@ -400,6 +502,37 @@ export class HealthCheckService {
         healthy: false,
         latency,
         message: `Pipeline check error: ${(error as Error).message}`,
+        lastCheck: new Date(),
+      };
+    }
+  }
+
+  private async checkDecisionEngine(): Promise<ComponentStatus> {
+    const start = Date.now();
+    try {
+      const snapshot = decisionEngine.getHealthSnapshot();
+      const unhealthyBreaker = snapshot.breakers.some((breaker) => breaker.state === 'open');
+
+      const latency = Date.now() - start;
+      return {
+        healthy: !unhealthyBreaker,
+        latency,
+        message: unhealthyBreaker ? 'Decision engine has open breakers' : 'Decision engine healthy',
+        metadata: {
+          cache: snapshot.cache,
+          breakers: snapshot.breakers,
+          latency: snapshot.latency,
+        },
+        lastCheck: new Date(),
+      };
+    } catch (error) {
+      const latency = Date.now() - start;
+      logger.error({ error }, 'HealthCheckService: Decision engine check failed');
+
+      return {
+        healthy: false,
+        latency,
+        message: `Decision engine check error: ${(error as Error).message}`,
         lastCheck: new Date(),
       };
     }

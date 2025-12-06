@@ -1,0 +1,178 @@
+{
+  "library": "r/VitaWellness Evergreen Content",
+  "version": "1.0.0",
+  "updatedAt": "2025-12-04",
+  "notes": "Manual-only posts for human moderators; no automation or product selling.",
+  "posts": [
+    {
+      "id": "science-of-hangovers-body",
+      "title": "The Science of Hangovers: What Really Happens to Your Body",
+      "topic": "hangover science",
+      "status": "ready",
+      "body": "A hangover is driven by a mix of dehydration, inflammatory signaling, low blood sugar, and sleep disruption rather than a single toxin. Acetaldehyde (the metabolite of alcohol) is irritating, and suppressed vasopressin increases urine output.\n\nKey points:\n- Immune markers (cytokines) rise the morning after drinking and contribute to headache and fatigue.\n- Vasopressin suppression and sweating/urination increase fluid and electrolyte loss.\n- Fragmented sleep and late-night light exposure worsen next-day cognition.\n\nTakeaway: Hydration, food, and time for metabolism are the core tools-there is no instant cure.",
+      "sources": [
+        {
+          "title": "NIAAA - Hangovers",
+          "url": "https://www.niaaa.nih.gov/publications/brochures-and-fact-sheets/hangovers"
+        },
+        {
+          "title": "Cleveland Clinic - Hangover Symptoms and Causes",
+          "url": "https://health.clevelandclinic.org/what-causes-a-hangover"
+        }
+      ]
+    },
+    {
+      "id": "transdermal-vs-oral-supplements",
+      "title": "Transdermal vs Oral Supplements: Absorption Science Explained",
+      "topic": "supplements",
+      "status": "ready",
+      "body": "Oral supplements pass through the gut and liver (first-pass metabolism), while transdermal patches rely on skin permeability, which varies by molecule size and formulation. Evidence for superior transdermal delivery of most vitamins is limited.\n\nKey points:\n- Fat-soluble compounds and small molecules penetrate skin more easily than large water-soluble vitamins.\n- Oral B-vitamins have well-documented bioavailability; peer-reviewed data for transdermal B-complex is sparse.\n- Any supplement should complement-not replace-hydration, sleep, and nutrition.\n\nTakeaway: Choose forms with published absorption data; be skeptical of \"100% absorption\" marketing claims.",
+      "sources": [
+        {
+          "title": "NIH Office of Dietary Supplements - Multivitamin/Mineral Supplements Fact Sheet",
+          "url": "https://ods.od.nih.gov/factsheets/MVMS-Consumer"
+        },
+        {
+          "title": "U.S. Pharmacist - Transdermal Drug Delivery Review",
+          "url": "https://www.uspharmacist.com/article/transdermal-delivery-systems"
+        }
+      ]
+    },
+    {
+      "id": "hydration-myths-debunked",
+      "title": "Hydration Myths Debunked: What Actually Helps",
+      "topic": "hydration",
+      "status": "ready",
+      "body": "Hydration is more than just water volume; it requires electrolytes to maintain fluid balance. Moderate caffeine intake has only a mild diuretic effect for most people.\n\nKey points:\n- Alternate alcohol with water plus a small amount of sodium/potassium to offset losses.\n- Sugary drinks can worsen GI upset; look for balanced electrolyte ratios instead of high sugar loads.\n- Clear urine is not required; pale yellow is a reasonable target.\n\nTakeaway: Pair fluids with electrolytes and pacing-myths like \"coffee dehydrates you\" or \"chugging water fixes everything\" are oversimplified.",
+      "sources": [
+        {
+          "title": "CDC - Water & Healthier Drinks",
+          "url": "https://www.cdc.gov/healthyweight/healthy_eating/water-and-healthier-drinks.html"
+        },
+        {
+          "title": "American College of Sports Medicine - Hydration Guidelines",
+          "url": "https://www.acsm.org/docs/default-source/files-for-resource-library/hydration-guidelines.pdf"
+        }
+      ]
+    },
+    {
+      "id": "nad-depletion-aging",
+      "title": "NAD+ Depletion: Why Hangovers Get Worse With Age",
+      "topic": "hangover science",
+      "status": "ready",
+      "body": "Alcohol metabolism uses the cofactor NAD+ to convert ethanol to acetaldehyde and acetate. NAD+ pools decline with age, and slower regeneration can make clearance feel harder in older adults.\n\nKey points:\n- Lower NAD+ availability can slow alcohol dehydrogenase and aldehyde dehydrogenase steps.\n- Sleep quality and total body water also decline with age, compounding symptoms.\n- Lifestyle (nutrition, sleep, medication interactions) often matters more than any single supplement.\n\nTakeaway: Expect slower recovery with age; pacing, hydration, and lighter intake are the most reliable levers.",
+      "sources": [
+        {
+          "title": "NIAAA - Alcohol Metabolism",
+          "url": "https://www.niaaa.nih.gov/alcohols-effects-health/alcohol-metabolism"
+        },
+        {
+          "title": "Cell Metabolism - NAD+ Metabolism and Signaling in Aging",
+          "url": "https://www.cell.com/cell-metabolism/fulltext/S1550-4131(17)30507-7"
+        }
+      ]
+    },
+    {
+      "id": "prevention-strategies-evidence-based",
+      "title": "Prevention Strategies: Evidence-Based Pre-Drinking Tips",
+      "topic": "harm reduction",
+      "status": "ready",
+      "body": "You cannot fully prevent a hangover, but you can reduce severity by pacing and supporting hydration and blood sugar.\n\nEvidence-backed steps:\n- Eat a meal with protein, fat, and complex carbs before drinking to slow absorption.\n- Set a drink limit and pace to one standard drink per hour; avoid binge patterns.\n- Alternate each alcoholic drink with water/electrolyte fluid.\n- Avoid mixing alcohol with sedatives or energy drinks due to masking and safety risks.\n\nTakeaway: Intentional pacing and nutrition beat late-night \"cures\" every time.",
+      "sources": [
+        {
+          "title": "NIAAA - Rethinking Drinking",
+          "url": "https://www.rethinkingdrinking.niaaa.nih.gov/"
+        },
+        {
+          "title": "CDC - Binge Drinking Fact Sheet",
+          "url": "https://www.cdc.gov/alcohol/fact-sheets/binge-drinking.htm"
+        }
+      ]
+    },
+    {
+      "id": "vitamin-cofactors-alcohol-metabolism",
+      "title": "Vitamin Cofactors: The Science of Alcohol Metabolism",
+      "topic": "supplements",
+      "status": "ready",
+      "body": "Thiamine (B1), vitamin B6, and folate support enzymes involved in energy metabolism and nervous system function. Heavy alcohol use can deplete these nutrients over time.\n\nKey points:\n- Thiamine deficiency is common in chronic heavy drinking; acute replenishment is primarily a medical setting intervention.\n- Magnesium and zinc participate in enzyme activity but are best obtained from food first.\n- Supplement doses should stay within established dietary reference intakes unless supervised by a clinician.\n\nTakeaway: Cofactors support normal metabolism, but they are not a license to drink more-food-first plus moderation remains the safest plan.",
+      "sources": [
+        {
+          "title": "NIH ODS - Thiamin Fact Sheet",
+          "url": "https://ods.od.nih.gov/factsheets/Thiamin-Consumer/"
+        },
+        {
+          "title": "NIH ODS - Vitamin B6 Fact Sheet",
+          "url": "https://ods.od.nih.gov/factsheets/VitaminB6-Consumer/"
+        }
+      ]
+    },
+    {
+      "id": "b-vitamins-and-hangovers",
+      "title": "B-Vitamins and Hangovers: What the Research Says",
+      "topic": "supplements",
+      "status": "ready",
+      "body": "Small studies suggest B-complex may reduce subjective hangover severity, but trials are limited, often combined with other ingredients, and not definitive.\n\nEvidence snapshot:\n- A few randomized trials with B-vitamins plus minerals showed modest symptom reductions but small sample sizes.\n- No study demonstrates complete prevention; hydration and dose control remain the dominant factors.\n- Over-supplementation can cause side effects (e.g., neuropathy with very high B6 over time).\n\nTakeaway: B-vitamins may help fill dietary gaps, but they are supportive-not curative.",
+      "sources": [
+        {
+          "title": "Nutrients - B Vitamins and Alcohol Use Review (2016)",
+          "url": "https://www.mdpi.com/2072-6643/8/12/805"
+        },
+        {
+          "title": "Journal of Clinical Medicine - Nutritional Interventions for Hangover (2020)",
+          "url": "https://www.mdpi.com/2077-0383/9/11/3671"
+        }
+      ]
+    },
+    {
+      "id": "electrolyte-balance-beyond-water",
+      "title": "Electrolyte Balance: More Than Just Water",
+      "topic": "hydration",
+      "status": "ready",
+      "body": "Replacing both fluid and electrolytes (sodium, potassium) supports circulation and nerve function. Over-diluting with plain water alone can prolong recovery in some cases.\n\nKey points:\n- Oral rehydration solutions use modest sugar with sodium to improve absorption; very sugary drinks slow gastric emptying.\n- Include light snacks with potassium (fruit, potatoes) and sodium (broth) alongside fluids.\n- Avoid excessive alcohol + NSAIDs + dehydration, which can stress kidneys and GI tract.\n\nTakeaway: Balanced fluids with electrolytes outperform water-only approaches for post-drinking recovery.",
+      "sources": [
+        {
+          "title": "WHO - Oral Rehydration Salts: Production of the New ORS",
+          "url": "https://cdn.who.int/media/docs/default-source/health-topics/oral-rehydration-salts/9789241598415_eng.pdf"
+        },
+        {
+          "title": "Harvard T.H. Chan - Nutrition Source on Hydration",
+          "url": "https://www.hsph.harvard.edu/nutritionsource/water/"
+        }
+      ]
+    },
+    {
+      "id": "recovery-timeline-hour-by-hour",
+      "title": "Recovery Timeline: Hour-by-Hour What Your Body Does",
+      "topic": "hangover science",
+      "status": "ready",
+      "body": "Alcohol is absorbed within 30-90 minutes and metabolized at roughly one standard drink per hour on average. Recovery steps unfold over many hours.\n\nTimeline overview:\n- 0-2 hours: Blood alcohol rises; vasopressin drops; diuresis begins.\n- 3-6 hours: Acetaldehyde peaks; sleep is fragmented if drinking late.\n- 6-12 hours: Immune markers rise; dehydration and low blood sugar drive headache and fatigue.\n- 12-24 hours: Clearance continues; rehydration, food, and rest reduce symptoms.\n\nTakeaway: There is no shortcut-supportive care and patience are the realistic path to feeling better.",
+      "sources": [
+        {
+          "title": "NIAAA - Alcohol Metabolism Basics",
+          "url": "https://www.niaaa.nih.gov/publications/brochures-and-fact-sheets/alcohol-metabolism"
+        },
+        {
+          "title": "Sleep Foundation - Alcohol and Sleep",
+          "url": "https://www.sleepfoundation.org/nutrition/alcohol-and-sleep"
+        }
+      ]
+    },
+    {
+      "id": "hangover-cures-fact-vs-fiction",
+      "title": "Common Hangover Cures: Fact vs Fiction",
+      "topic": "myths",
+      "status": "ready",
+      "body": "Most popular hangover \"cures\" have weak or no evidence. Strategies that truly help are hydration, light food, and rest.\n\nFact check:\n- \"Hair of the dog\" only delays symptoms and adds risk; it is not treatment.\n- Greasy food after drinking does not \"soak up\" alcohol-eating beforehand is what slows absorption.\n- Supplements and IV drips vary in content; benefits are largely supportive hydration.\n\nTakeaway: Stick to basics-water/electrolytes, balanced meals, and sleep. If symptoms are severe or persistent, seek medical advice.",
+      "sources": [
+        {
+          "title": "BMJ - Evidence for Hangover Remedies Review (2005)",
+          "url": "https://www.bmj.com/content/331/7531/1515"
+        },
+        {
+          "title": "Mayo Clinic - Hangovers",
+          "url": "https://www.mayoclinic.org/diseases-conditions/hangovers/symptoms-causes/syc-20373012"
+        }
+      ]
+    }
+  ]
+}
