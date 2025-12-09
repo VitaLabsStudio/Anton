@@ -2,21 +2,23 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import YAML from 'yaml';
+import type { Author, Post, Platform } from '@prisma/client';
 import NodeCache from 'node-cache';
 import CircuitBreaker from 'opossum';
+import YAML from 'yaml';
 import { z } from 'zod';
 
-import type { Author, Post, Platform } from '@prisma/client';
+import type { MetricsAdapter } from '../observability/metrics-adapter.js';
+import { metricsCollector } from '../observability/metrics-registry.js';
+import { logger } from '../utils/logger.js';
+import { prisma as prismaClient } from '../utils/prisma.js';
+import { temporalMultiplier } from '../workers/temporal-multiplier.js';
 
-import {
-  analyzeLinguisticIntent,
-  type SignalResult as SssSignal,
-} from './signal-1-linguistic.js';
-import {
-  analyzeAuthorContext,
-  type SignalResult as ArsSignal,
-} from './signal-2-author.js';
+import { detectCompetitor, type CompetitorSignal } from './competitive-detector.js';
+import { detectPowerUser, type PowerUserSignal } from './power-user-detector.js';
+import { checkSafetyProtocol, SafetySeverity, type SafetySignal } from './safety-protocol.js';
+import { analyzeLinguisticIntent, type SignalResult as SssSignal } from './signal-1-linguistic.js';
+import { analyzeAuthorContext, type SignalResult as ArsSignal } from './signal-2-author.js';
 import {
   analyzePostVelocity,
   type VelocitySignalResult as EvsSignal,
@@ -25,19 +27,9 @@ import {
   analyzeSemanticTopic,
   type SemanticTopicSignalResult as TrsSignal,
 } from './signal-4-semantic.js';
-import { checkSafetyProtocol, SafetySeverity, type SafetySignal } from './safety-protocol.js';
-import { detectPowerUser, type PowerUserSignal } from './power-user-detector.js';
-import { detectCompetitor, type CompetitorSignal } from './competitive-detector.js';
-import {
-  getTemporalContext,
-  type TemporalSignal,
-} from './temporal-intelligence.js';
-
-import { logger } from '../utils/logger.js';
-import { prisma as prismaClient } from '../utils/prisma.js';
-import { temporalMultiplier } from '../workers/temporal-multiplier.js';
-import { metricsCollector } from '../observability/metrics-registry.js';
-import type { MetricsAdapter } from '../observability/metrics-adapter.js';
+import { getTemporalContext } from './temporal-migration.js';
+import { type TemporalSignal } from './temporal-intelligence.js';
+import { TemporalFeatureExtractor } from './temporal-feature-extractor.js';
 
 export type OperationalMode = 'HELPFUL' | 'ENGAGEMENT' | 'HYBRID' | 'DISENGAGED';
 
@@ -216,11 +208,15 @@ const FALLBACK_SIGNALS = {
   ars: { score: 0.5, confidence: 0.5, archetypes: [], interactionCount: 0 } as ArsSignal,
   evs: {
     ratio: 1.0,
-    category: 'normal',
+    category: 'normal' as const,
     confidence: 0.5,
     baselineRate: 1,
     currentRate: 1,
-    temporalContext: temporalMultiplier.getContext(new Date()),
+    temporalContext: {
+      hoursSincePost: 1,
+      timeOfDayFactor: 1,
+      dayOfWeekFactor: 1,
+    },
   } as EvsSignal,
   trs: { score: 0.5, confidence: 0.5, context: 'ambiguous' } as TrsSignal,
   safety: {
@@ -287,13 +283,13 @@ class LatencyHistogram {
     this.buffer.push(value);
 
     for (let idx = 0; idx < this.bucketThresholds.length; idx += 1) {
-      if (value <= this.bucketThresholds[idx]) {
-        this.bucketCounts[idx] += 1;
+      if (value <= (this.bucketThresholds[idx] ?? Number.POSITIVE_INFINITY)) {
+        this.bucketCounts[idx] = (this.bucketCounts[idx] ?? 0) + 1;
       }
     }
   }
 
-  getStats() {
+  getStats(): { count: number; p95: number | null; max: number | null } {
     if (this.buffer.length === 0) {
       return { count: this.totalCount, p95: null, max: null };
     }
@@ -301,15 +297,15 @@ class LatencyHistogram {
     const idx = Math.floor(0.95 * (sorted.length - 1));
     return {
       count: this.totalCount,
-      p95: sorted[Math.min(idx, sorted.length - 1)],
-      max: sorted[sorted.length - 1],
+      p95: sorted[Math.min(idx, sorted.length - 1)] ?? null,
+      max: sorted[sorted.length - 1] ?? null,
     };
   }
 
   getBuckets(): Array<{ le: number; count: number }> {
     return this.bucketThresholds.map((threshold, idx) => ({
       le: threshold,
-      count: this.bucketCounts[idx],
+      count: this.bucketCounts[idx] ?? 0,
     }));
   }
 
@@ -333,9 +329,10 @@ export class DecisionEngine {
     errorThresholdPercentage: 50,
     resetTimeout: DEFAULT_DECISION_RESET_MS,
   };
-  private readonly breakers = new Map<string, CircuitBreaker<unknown>>();
+  private readonly breakers = new Map<string, CircuitBreaker<[]>>();
   private readonly archetypeCache = new Map<string, string | null>();
   private readonly latencyHistogram = new LatencyHistogram();
+  private readonly temporalFeatureExtractor = new TemporalFeatureExtractor();
 
   constructor(options?: DecisionEngineOptions) {
     this.thresholds =
@@ -440,6 +437,17 @@ export class DecisionEngine {
     const context = this.buildDecisionContext(post);
     const weights = await this.getWeights(context);
 
+    const temporalAdjustment = signals.temporal.context.sssThresholdAdjustment ?? 0;
+    const adjustedThresholds: DecisionThresholds = {
+      ...this.thresholds,
+      sssHelpful: Math.min(1, Math.max(0, this.thresholds.sssHelpful + temporalAdjustment)),
+      sssModerate: Math.min(1, Math.max(0, this.thresholds.sssModerate + temporalAdjustment)),
+    };
+    signals.temporal.context.mlFeatures = this.temporalFeatureExtractor.extract(
+      signals.temporal.context,
+      signals.temporal.timestamp
+    );
+
     const compositeScore = this.calculateComposite(
       signals.sss,
       signals.ars,
@@ -457,7 +465,7 @@ export class DecisionEngine {
       compositeScore
     );
 
-    const { mode, probabilities } = this.selectMode(signals);
+    const { mode, probabilities } = this.selectMode(signals, adjustedThresholds);
     const modeConfidence = probabilities[mode] ?? 0;
     const reviewInfo = this.computeReviewInfo(signals, compositeScore, modeConfidence, mode);
     const archetype = this.pickArchetype(signals);
@@ -540,8 +548,13 @@ export class DecisionEngine {
         () => detectCompetitor(post.content),
         FALLBACK_SIGNALS.competitor
       ),
-      this.fetchSignalWithBreaker('Temporal', () =>
-        getTemporalContext(post.detectedAt ?? new Date()),
+      this.fetchSignalWithBreaker(
+        'Temporal',
+        async () => {
+          const timestamp = post.detectedAt ?? new Date();
+          const context = getTemporalContext(timestamp);
+          return { context, timestamp };
+        },
         () => this.buildTemporalFallback()
       ),
     ]);
@@ -586,7 +599,10 @@ export class DecisionEngine {
 
   private async fetchAndValidateWeights(context: DecisionContext): Promise<SignalWeights> {
     try {
-      const combined = await this.fetchSegmentWeights('COMBINED', `${context.platform}_${context.timeOfDay}`);
+      const combined = await this.fetchSegmentWeights(
+        'COMBINED',
+        `${context.platform}_${context.timeOfDay}`
+      );
       if (combined) {
         const validated = this.applyBayesianShrinkage(combined, this.defaultWeights);
         if (validated.isValidated) {
@@ -609,7 +625,10 @@ export class DecisionEngine {
     return { ...this.defaultWeights, validationTimestamp: new Date(), isValidated: true };
   }
 
-  private async fetchSegmentWeights(segmentType: string, segmentKey: string): Promise<SegmentWeightRecord | null> {
+  private async fetchSegmentWeights(
+    segmentType: string,
+    segmentKey: string
+  ): Promise<SegmentWeightRecord | null> {
     const client = this.prisma.segmentedWeight;
     if (!client?.findUnique) {
       logger.warn({ segmentType, segmentKey }, 'Segmented weight client missing');
@@ -639,9 +658,7 @@ export class DecisionEngine {
     globalWeights: SignalWeights
   ): SignalWeights {
     const now = new Date();
-    const sampleSize = Number.isFinite(segmentWeights.sampleSize)
-      ? segmentWeights.sampleSize
-      : 0;
+    const sampleSize = Number.isFinite(segmentWeights.sampleSize) ? segmentWeights.sampleSize : 0;
     const minSampleSize = Math.max(this.thresholds.minSampleSize, 1);
 
     if (!Number.isFinite(sampleSize) || sampleSize <= 0) {
@@ -653,14 +670,10 @@ export class DecisionEngine {
     const shrinkage = sampleSize / (sampleSize + minSampleSize);
 
     const blended: SignalWeights = {
-      sssWeight:
-        shrinkage * segmentWeights.sssWeight + (1 - shrinkage) * globalWeights.sssWeight,
-      arsWeight:
-        shrinkage * segmentWeights.arsWeight + (1 - shrinkage) * globalWeights.arsWeight,
-      evsWeight:
-        shrinkage * segmentWeights.evsWeight + (1 - shrinkage) * globalWeights.evsWeight,
-      trsWeight:
-        shrinkage * segmentWeights.trsWeight + (1 - shrinkage) * globalWeights.trsWeight,
+      sssWeight: shrinkage * segmentWeights.sssWeight + (1 - shrinkage) * globalWeights.sssWeight,
+      arsWeight: shrinkage * segmentWeights.arsWeight + (1 - shrinkage) * globalWeights.arsWeight,
+      evsWeight: shrinkage * segmentWeights.evsWeight + (1 - shrinkage) * globalWeights.evsWeight,
+      trsWeight: shrinkage * segmentWeights.trsWeight + (1 - shrinkage) * globalWeights.trsWeight,
       sssArsInteraction:
         shrinkage * (segmentWeights.sssArsInteraction ?? 0) +
         (1 - shrinkage) * (globalWeights.sssArsInteraction ?? 0),
@@ -683,9 +696,16 @@ export class DecisionEngine {
   }
 
   private validateWeights(candidate: SignalWeights, fallback: SignalWeights): SignalWeights {
-    const baseWeights = [candidate.sssWeight, candidate.arsWeight, candidate.evsWeight, candidate.trsWeight];
+    const baseWeights = [
+      candidate.sssWeight,
+      candidate.arsWeight,
+      candidate.evsWeight,
+      candidate.trsWeight,
+    ];
     if (baseWeights.some((value) => !Number.isFinite(value) || value < 0)) {
-      this.metrics.increment('weights_validation_failure_count', { reason: 'non_finite_or_negative' });
+      this.metrics.increment('weights_validation_failure_count', {
+        reason: 'non_finite_or_negative',
+      });
       logger.error({ candidate }, 'DecisionEngine invalid weights');
       return { ...fallback, isValidated: false, validationTimestamp: new Date() };
     }
@@ -775,7 +795,10 @@ export class DecisionEngine {
   /**
    * Select an operational mode with explicit gates (safety/TRS) and prioritized branches, normalizing probabilities to the chosen mode.
    */
-  selectMode(signals: SignalBundle): { mode: OperationalMode; probabilities: Record<OperationalMode, number> } {
+  selectMode(signals: SignalBundle, thresholds: DecisionThresholds = this.thresholds): {
+    mode: OperationalMode;
+    probabilities: Record<OperationalMode, number>;
+  } {
     const { safety, trs, powerUser } = signals;
 
     if (safety.shouldDisengage) {
@@ -785,7 +808,7 @@ export class DecisionEngine {
       };
     }
 
-    if (trs.score < this.thresholds.trsGate) {
+    if (trs.score < thresholds.trsGate) {
       return {
         mode: 'DISENGAGED',
         probabilities: this.gatedProbabilities('DISENGAGED'),
@@ -802,28 +825,28 @@ export class DecisionEngine {
       return this.probabilisticMode('ENGAGEMENT', signals);
     }
 
-    if (signals.sss.score >= this.thresholds.sssHelpful) {
+    if (signals.sss.score >= thresholds.sssHelpful) {
       return this.probabilisticMode('HELPFUL', signals);
     }
 
-    if (signals.evs.ratio > this.thresholds.evsHighViral) {
-      if (signals.ars.score > this.thresholds.arsStrong) {
+    if (signals.evs.ratio > thresholds.evsHighViral) {
+      if (signals.ars.score > thresholds.arsStrong) {
         return this.probabilisticMode('HYBRID', signals);
       }
-      if (signals.sss.score >= this.thresholds.sssModerate) {
+      if (signals.sss.score >= thresholds.sssModerate) {
         return this.probabilisticMode('ENGAGEMENT', signals);
       }
       return this.probabilisticMode('DISENGAGED', signals);
     }
 
-    if (signals.sss.score >= this.thresholds.sssModerate) {
-      if (signals.ars.score > this.thresholds.arsStrong) {
+    if (signals.sss.score >= thresholds.sssModerate) {
+      if (signals.ars.score > thresholds.arsStrong) {
         return this.probabilisticMode('HYBRID', signals);
       }
       return this.probabilisticMode('ENGAGEMENT', signals);
     }
 
-    if (signals.evs.ratio > this.thresholds.evsModerateViral) {
+    if (signals.evs.ratio > thresholds.evsModerateViral) {
       return this.probabilisticMode('ENGAGEMENT', signals);
     }
 
@@ -849,7 +872,10 @@ export class DecisionEngine {
 
   private calculateModeLogit(mode: OperationalMode, signals: SignalBundle): number {
     const { sss, ars, evs, trs } = signals;
-    const coefficients: Record<OperationalMode, { intercept: number; sss: number; ars: number; evs: number; trs: number }> = {
+    const coefficients: Record<
+      OperationalMode,
+      { intercept: number; sss: number; ars: number; evs: number; trs: number }
+    > = {
       HELPFUL: { intercept: -2, sss: 5, ars: 1, evs: 0.5, trs: 0.5 },
       ENGAGEMENT: { intercept: -1, sss: -2, ars: 0, evs: 2, trs: 0.5 },
       HYBRID: { intercept: -1.5, sss: 2, ars: 3, evs: 1, trs: 0.5 },
@@ -938,12 +964,18 @@ export class DecisionEngine {
     weights: SignalWeights,
     compositeScore: number
   ): { credibleInterval: [number, number] } {
-    const sampleSize = Number.isFinite(weights.sampleSize) && weights.sampleSize > 0
-      ? weights.sampleSize
-      : this.thresholds.minSampleSize;
+    const sampleSize =
+      Number.isFinite(weights.sampleSize) && weights.sampleSize > 0
+        ? weights.sampleSize
+        : this.thresholds.minSampleSize;
 
     const sampleFactor = Math.min(sampleSize / this.thresholds.minSampleSize, 1);
-    const avgConfidence = this.averageConfidence([sss, ars, trs, { score: evs.confidence ?? DEFAULT_CONFIDENCE }]);
+    const avgConfidence = this.averageConfidence([
+      sss,
+      ars,
+      trs,
+      { score: evs.confidence ?? DEFAULT_CONFIDENCE },
+    ]);
 
     let variance = DEFAULT_VARIANCE * (1 - sampleFactor) * (1 - avgConfidence);
     if (!Number.isFinite(variance) || variance <= 0) {
@@ -1001,9 +1033,10 @@ export class DecisionEngine {
 
   private isNearThreshold(sssScore: number, compositeScore: number): boolean {
     const candidateThresholds = [this.thresholds.sssHelpful, this.thresholds.sssModerate];
-    return candidateThresholds.some((threshold) =>
-      Math.abs(sssScore - threshold) <= this.thresholds.nearThresholdTolerance ||
-      Math.abs(compositeScore - threshold) <= this.thresholds.nearThresholdTolerance
+    return candidateThresholds.some(
+      (threshold) =>
+        Math.abs(sssScore - threshold) <= this.thresholds.nearThresholdTolerance ||
+        Math.abs(compositeScore - threshold) <= this.thresholds.nearThresholdTolerance
     );
   }
 
@@ -1030,26 +1063,53 @@ export class DecisionEngine {
     return typeof fallback === 'function' ? (fallback as () => T)() : fallback;
   }
 
-  private getOrCreateBreaker<T>(name: string, fetcher: () => Promise<T>): CircuitBreaker<T> {
+  private getOrCreateBreaker<T>(name: string, fetcher: () => Promise<T>): CircuitBreaker<[]> {
     if (this.breakers.has(name)) {
-      return this.breakers.get(name) as CircuitBreaker<T>;
+      return this.breakers.get(name) as CircuitBreaker<[]>;
     }
 
-    const breaker = new CircuitBreaker(fetcher, this.breakerOptions) as CircuitBreaker<T>;
+    const breaker = new CircuitBreaker(fetcher, this.breakerOptions);
 
     breaker.on('open', () => this.metrics.increment('breaker_state_open', { signal: name }));
+
     breaker.on('close', () => this.metrics.increment('breaker_state_close', { signal: name }));
-    breaker.on('timeout', () => this.metrics.increment('breaker_state_failure', { signal: name, reason: 'timeout' }));
-    breaker.on('reject', () => this.metrics.increment('breaker_state_failure', { signal: name, reason: 'reject' }));
+
+    breaker.on('timeout', () =>
+      this.metrics.increment('breaker_state_failure', { signal: name, reason: 'timeout' })
+    );
+
+    breaker.on('reject', () =>
+      this.metrics.increment('breaker_state_failure', { signal: name, reason: 'reject' })
+    );
+
     breaker.on('fallback', () => this.metrics.increment('breaker_fallback', { signal: name }));
 
-    this.breakers.set(name, breaker as unknown as CircuitBreaker<unknown>);
+    this.breakers.set(name, breaker);
+
     return breaker;
   }
 
   private pickArchetype(signals: SignalBundle): string | null {
+    const detectedArchetypes = signals.ars.archetypes;
+    const temporalPreferences = signals.temporal.context.archetypePreferences ?? [];
+
+    if (detectedArchetypes.length > 0 && temporalPreferences.length > 0) {
+      const preferredMatch = detectedArchetypes.find((a) => temporalPreferences.includes(a));
+      if (preferredMatch) {
+        logger.info(
+          {
+            preferredMatch,
+            detected: detectedArchetypes,
+            preferences: temporalPreferences,
+          },
+          'temporal_archetype_applied'
+        );
+        return preferredMatch;
+      }
+    }
+
     if (signals.ars.archetypes.length > 0) {
-      return signals.ars.archetypes[0];
+      return signals.ars.archetypes[0] ?? null;
     }
     if (signals.competitor.detected && signals.competitor.name) {
       return `competitor_${signals.competitor.name}`;
@@ -1160,15 +1220,16 @@ export class DecisionEngine {
     return {
       count: this.latencyHistogram.getTotalCount(),
       sum: this.latencyHistogram.getSum(),
-      p95: stats.p95,
-      max: stats.max,
+      p95: stats.p95 ?? null,
+      max: stats.max ?? null,
       buckets: this.latencyHistogram.getBuckets(),
     };
   }
 
   private getBreakerStates(): Array<{ signal: string; state: string }> {
     return Array.from(this.breakers.entries()).map(([signal, breaker]) => {
-      const state = (breaker as unknown as { state?: string }).state ??
+      const state =
+        (breaker as unknown as { state?: string }).state ??
         (breaker as unknown as { status?: { state?: string } }).status?.state ??
         'unknown';
       return { signal, state };

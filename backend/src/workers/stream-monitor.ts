@@ -11,22 +11,21 @@
  * - Graceful degradation for platform failures
  */
 
-import { TwitterMonitor } from '../platforms/twitter/monitor.js';
+import type { Platform, Prisma } from '@prisma/client';
+
+import { RedditClient } from '../platforms/reddit/client.js';
 import { RedditMonitor } from '../platforms/reddit/monitor.js';
 import { ThreadsMonitor } from '../platforms/threads/monitor.js';
-import { RedditClient } from '../platforms/reddit/client.js';
+import { TwitterMonitor } from '../platforms/twitter/monitor.js';
+import { logger } from '../utils/logger.js';
+import { prisma } from '../utils/prisma.js';
+
+import { analyzePostSignals, type SignalAnalysisResult } from './analysis/post-signal-analyzer.js';
+import { getTemporalContext } from '../analysis/temporal-migration.js';
+import { karmaGate, type KarmaGateResult } from './guards/karma-gate.js';
 import { keywordMatcher } from './keyword-matcher.js';
 import { spamFilter } from './spam-filter.js';
-import { temporalMultiplier } from './temporal-multiplier.js';
-import { karmaGate, type KarmaGateResult } from './guards/karma-gate.js';
-import { prisma } from '../utils/prisma.js';
-import { logger } from '../utils/logger.js';
 import type { DetectedPost } from './types.js';
-import type { Platform, Prisma } from '@prisma/client';
-import {
-  analyzePostSignals,
-  type SignalAnalysisResult,
-} from './analysis/post-signal-analyzer.js';
 
 interface FunnelMetrics {
   scanned: number;
@@ -109,9 +108,6 @@ export class StreamMonitorWorker {
     const matcherStats = keywordMatcher.getStats();
     logger.info(matcherStats, 'KeywordMatcher configuration');
 
-    // Log temporal multiplier context
-    temporalMultiplier.logContext();
-
     // Log karma gate status
     await karmaGate.logStatus(this.redditClient);
 
@@ -152,18 +148,22 @@ export class StreamMonitorWorker {
       this.funnelMetrics.errors++;
     }
 
-    // Calculate next interval using temporal multiplier
-    const adjustedInterval = temporalMultiplier.getAdjustedInterval(
-      this.config.baseInterval
-    );
+    // Calculate next interval using temporal context
+    const temporalContext = getTemporalContext(new Date());
+    const monitoringMultiplier = temporalContext.monitoringMultiplier ?? 1.0;
+    
+    // Safety check: ensure multiplier is positive
+    const safeMultiplier = Math.max(0.1, monitoringMultiplier);
+    const adjustedInterval = Math.floor(this.config.baseInterval / safeMultiplier);
 
-    logger.debug(
+    logger.info(
       {
         baseInterval: this.config.baseInterval,
         adjustedInterval,
-        multiplier: temporalMultiplier.getMultiplier(),
+        monitoringMultiplier: safeMultiplier,
+        temporalPhase: temporalContext.phase,
       },
-      'StreamMonitorWorker: Scheduling next cycle'
+      'temporal_monitoring_adjusted'
     );
 
     // Schedule next cycle
@@ -182,8 +182,9 @@ export class StreamMonitorWorker {
     logger.info('StreamMonitorWorker: Starting scan cycle');
 
     // Get all keywords from matcher
-    const allKeywords = Object.values(keywordMatcher['config'].categories)
-      .flatMap((cat) => cat.terms);
+    const allKeywords = Object.values(keywordMatcher['config'].categories).flatMap(
+      (cat) => cat.terms
+    );
 
     // Scan all platforms in parallel
     const [twitterPosts, redditPosts, threadsPosts] = await Promise.allSettled([
@@ -297,10 +298,7 @@ export class StreamMonitorWorker {
 
     const analysisResult = await this.runSignalAnalysis(post);
 
-    if (
-      analysisResult &&
-      this.shouldSkipDueToSemantic(analysisResult.semantic)
-    ) {
+    if (analysisResult && this.shouldSkipDueToSemantic(analysisResult.semantic)) {
       this.funnelMetrics.semanticFiltered++;
       logger.info(
         {
