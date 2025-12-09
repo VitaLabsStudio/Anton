@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Platform } from '@prisma/client';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { AuthorContextAnalyzer } from '../../../src/analysis/signal-2-author';
 
@@ -94,7 +94,7 @@ describe('AuthorContextAnalyzer', () => {
       relationshipScore: 0.5,
       interactionHistory: [
         { type: 'thanks', timestamp: '2025-01-01' }, // +0.15
-        { type: 'click', timestamp: '2025-01-02' },  // +0.10
+        { type: 'click', timestamp: '2025-01-02' }, // +0.10
       ],
       archetypeTags: [],
       displayName: 'Fan',
@@ -134,7 +134,7 @@ describe('AuthorContextAnalyzer', () => {
 
     // Assert
     // Base 0.5 - 0.20 = 0.30
-    expect(result.score).toBeCloseTo(0.30);
+    expect(result.score).toBeCloseTo(0.3);
   });
 
   it('should cap score between 0.0 and 1.0', async () => {
@@ -199,7 +199,7 @@ describe('AuthorContextAnalyzer', () => {
     // Should detect 'healthcare_pro' (Physician/Dr) and 'parent' (Dad)
     expect(result.archetypes).toContain('healthcare_pro');
     expect(result.archetypes).toContain('parent');
-    
+
     // Should call update to save tags
     expect(mocks.prisma.author.update).toHaveBeenCalledWith({
       where: { id: 'author-doc' },

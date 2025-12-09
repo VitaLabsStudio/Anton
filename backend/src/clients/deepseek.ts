@@ -15,6 +15,7 @@ export interface GenerateResult {
 export interface GenerateOptions {
   temperature?: number;
   maxTokens?: number;
+  requestId?: string;
 }
 
 export interface DeepSeekClientOptions {
@@ -63,6 +64,15 @@ export class DeepSeekClient {
         throw new Error('DEEPSEEK_API_KEY is not set');
       }
 
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      };
+
+      if (options?.requestId) {
+        headers['x-request-id'] = options.requestId;
+      }
+
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
@@ -78,10 +88,7 @@ export class DeepSeekClient {
           max_tokens: options?.maxTokens ?? 200,
         },
         {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-          },
+          headers,
           timeout: this.timeoutMs,
         }
       );
@@ -100,12 +107,18 @@ export class DeepSeekClient {
     } catch (error) {
       if (retries > 0 && this.isRetryable(error)) {
         const delay = Math.pow(2, 4 - retries) * 1000; // 1s, 2s, 4s
-        logger.warn({ error: (error as Error).message, delay }, 'DeepSeek API call failed, retrying');
+        logger.warn(
+          { error: (error as Error).message, delay, requestId: options?.requestId },
+          'DeepSeek API call failed, retrying'
+        );
         await new Promise((resolve) => setTimeout(resolve, delay));
         return this.generateWithRetry(prompt, options, retries - 1);
       }
 
-      logger.error({ error }, 'DeepSeek API call failed after retries');
+      logger.error(
+        { error, requestId: options?.requestId },
+        'DeepSeek API call failed after retries'
+      );
       throw error;
     }
   }

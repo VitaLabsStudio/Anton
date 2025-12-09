@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { prisma } from '../../../src/utils/prisma.js';
 import type { DecisionThresholds } from '../../../src/analysis/decision-engine.js';
+import { prisma } from '../../../src/utils/prisma.js';
 
 const hasDatabase = Boolean(process.env['DATABASE_URL']);
 const describeIfDb = hasDatabase ? describe : describe.skip;
@@ -40,6 +40,12 @@ vi.mock('../../../src/analysis/signal-4-semantic.js', () => ({
 }));
 vi.mock('../../../src/analysis/safety-protocol.js', () => ({
   checkSafetyProtocol: vi.fn(async () => ({ shouldDisengage: false, flags: [] })),
+  SafetySeverity: {
+    CRITICAL: 'CRITICAL',
+    HIGH: 'HIGH',
+    MEDIUM: 'MEDIUM',
+    LOW: 'LOW',
+  },
 }));
 vi.mock('../../../src/analysis/power-user-detector.js', () => ({
   detectPowerUser: vi.fn(async () => ({ isPowerUser: true, confidence: 0.95 })),
@@ -119,8 +125,7 @@ describeIfDb('DecisionEngine DB persistence integration', () => {
       ];
 
       for (const name of indexes) {
-        const [result] =
-          await prisma.$queryRaw<{ to_regclass: string | null }>`
+        const [result] = await prisma.$queryRaw<{ to_regclass: string | null }>`
             SELECT to_regclass(${name})::text AS to_regclass
           `;
         expect(result?.to_regclass).toBeTruthy();

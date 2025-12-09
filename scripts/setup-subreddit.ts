@@ -45,8 +45,7 @@ interface SubredditRulesResponse {
   rules: Array<{ short_name: string }>;
 }
 
-const dryRun =
-  (process.env['SUBREDDIT_SETUP_DRY_RUN'] ?? 'true').toLowerCase() !== 'false';
+const dryRun = (process.env['SUBREDDIT_SETUP_DRY_RUN'] ?? 'true').toLowerCase() !== 'false';
 
 function requireEnv(key: string): string {
   // Environment access keyed by a whitelisted name; keys are controlled above.
@@ -63,9 +62,7 @@ function loadCredentials(): Credentials {
     clientId: requireEnv('REDDIT_CLIENT_ID'),
     clientSecret: requireEnv('REDDIT_CLIENT_SECRET'),
     refreshToken: requireEnv('REDDIT_REFRESH_TOKEN'),
-    userAgent:
-      process.env['REDDIT_USER_AGENT'] ??
-      'Antone/1.0.0 (manual subreddit setup)',
+    userAgent: process.env['REDDIT_USER_AGENT'] ?? 'Antone/1.0.0 (manual subreddit setup)',
   };
 }
 
@@ -145,23 +142,17 @@ function buildSetupConfig(): SetupConfig {
   };
 }
 
-async function ensureSubreddit(
-  client: Snoowrap,
-  config: SetupConfig
-): Promise<Subreddit> {
+async function ensureSubreddit(client: Snoowrap, config: SetupConfig): Promise<Subreddit> {
   const name = normalizeSubredditName(config.subredditName);
   try {
     const existing = (await client.getSubreddit(name).fetch()) as Subreddit;
     console.info(`Subreddit r/${existing.display_name} exists; skipping create.`);
     return existing;
   } catch (error) {
-    const reason =
-      error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error';
+    const reason = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error';
     console.warn(`Fetch for r/${name} failed (${reason}); attempting create next.`);
     if (dryRun) {
-      console.info(
-        `[dry-run] Would create subreddit r/${name} with type=restricted`
-      );
+      console.info(`[dry-run] Would create subreddit r/${name} with type=restricted`);
       return client.getSubreddit(name);
     }
 
@@ -190,10 +181,7 @@ async function ensureSubreddit(
   }
 }
 
-async function applySettings(
-  subreddit: Subreddit,
-  config: SetupConfig
-): Promise<void> {
+async function applySettings(subreddit: Subreddit, config: SetupConfig): Promise<void> {
   if (dryRun) {
     console.info('[dry-run] Would update subreddit settings and sidebar.');
     return;
@@ -230,14 +218,11 @@ async function applyRules(
   subreddit: Subreddit,
   rules: RuleDefinition[]
 ): Promise<void> {
-  const existingRules = (
-    (await subreddit.getRules()) as SubredditRulesResponse
-  ).rules;
+  const existingRules = ((await subreddit.getRules()) as SubredditRulesResponse).rules;
 
   for (const [index, rule] of rules.entries()) {
     const alreadyExists = existingRules.some(
-      (existingRule) =>
-        existingRule.short_name.toLowerCase() === rule.shortName.toLowerCase()
+      (existingRule) => existingRule.short_name.toLowerCase() === rule.shortName.toLowerCase()
     );
 
     if (alreadyExists) {
@@ -268,10 +253,7 @@ async function applyRules(
   }
 }
 
-async function applyStylesheet(
-  subreddit: Subreddit,
-  stylesheetCss: string
-): Promise<void> {
+async function applyStylesheet(subreddit: Subreddit, stylesheetCss: string): Promise<void> {
   if (dryRun) {
     console.info('[dry-run] Would update subreddit stylesheet.');
     return;
@@ -302,15 +284,12 @@ async function main(): Promise<void> {
 
   console.info('Subreddit setup complete. Review settings in the Reddit UI.');
   if (dryRun) {
-    console.info(
-      'To apply changes, set SUBREDDIT_SETUP_DRY_RUN=false and rerun this script.'
-    );
+    console.info('To apply changes, set SUBREDDIT_SETUP_DRY_RUN=false and rerun this script.');
   }
 }
 
 void main().catch((error: unknown) => {
-  const message =
-    error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
   console.error('Subreddit setup failed:', message);
   process.exit(1);
 });

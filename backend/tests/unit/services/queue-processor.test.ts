@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+import { contextEngine } from '../../../src/analysis/context-intel/service.js';
+import { decisionEngine } from '../../../src/analysis/decision-engine.js';
 import { QueueProcessor } from '../../../src/services/queue-processor.js';
 import { prisma } from '../../../src/utils/prisma.js';
-import { decisionEngine } from '../../../src/analysis/decision-engine.js';
-import { contextEngine } from '../../../src/analysis/context-intel/service.js';
 
 // Mock prisma
 vi.mock('../../../src/utils/prisma.js', () => ({
@@ -11,8 +12,8 @@ vi.mock('../../../src/utils/prisma.js', () => ({
       findMany: vi.fn(),
     },
     decision: {
-        updateMany: vi.fn(),
-    }
+      updateMany: vi.fn(),
+    },
   },
 }));
 
@@ -66,12 +67,12 @@ describe('QueueProcessor', () => {
   it('should trigger context enrichment if score >= 0.65', async () => {
     (prisma.post.findMany as any).mockResolvedValue([mockPost]);
     (decisionEngine.analyzePost as any).mockResolvedValue({
-        compositeScore: 0.7,
-        isPowerUser: false,
-        competitorDetected: null,
+      compositeScore: 0.7,
+      isPowerUser: false,
+      competitorDetected: null,
     });
     (contextEngine.evaluate as any).mockResolvedValue({
-        recommendation: 'PROCEED'
+      recommendation: 'PROCEED',
     });
 
     processor.start();
@@ -82,9 +83,9 @@ describe('QueueProcessor', () => {
   it('should NOT trigger context enrichment if score < 0.65', async () => {
     (prisma.post.findMany as any).mockResolvedValue([mockPost]);
     (decisionEngine.analyzePost as any).mockResolvedValue({
-        compositeScore: 0.5,
-        isPowerUser: false,
-        competitorDetected: null,
+      compositeScore: 0.5,
+      isPowerUser: false,
+      competitorDetected: null,
     });
 
     processor.start();
@@ -96,24 +97,26 @@ describe('QueueProcessor', () => {
   it('should handle ABORT recommendation', async () => {
     (prisma.post.findMany as any).mockResolvedValue([mockPost]);
     (decisionEngine.analyzePost as any).mockResolvedValue({
-        compositeScore: 0.8,
-        isPowerUser: false,
-        competitorDetected: null,
+      compositeScore: 0.8,
+      isPowerUser: false,
+      competitorDetected: null,
     });
     (contextEngine.evaluate as any).mockResolvedValue({
-        recommendation: 'ABORT',
-        abortReason: 'Safety Risk'
+      recommendation: 'ABORT',
+      abortReason: 'Safety Risk',
     });
 
     processor.start();
     await vi.waitFor(() => expect(contextEngine.evaluate).toHaveBeenCalled());
-    
+
     // Should update decision to DISENGAGED
-    await vi.waitFor(() => expect(prisma.decision.updateMany).toHaveBeenCalledWith(
+    await vi.waitFor(() =>
+      expect(prisma.decision.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-            where: { postId: mockPost.id },
-            data: expect.objectContaining({ mode: 'DISENGAGED' })
+          where: { postId: mockPost.id },
+          data: expect.objectContaining({ mode: 'DISENGAGED' }),
         })
-    ));
+      )
+    );
   });
 });

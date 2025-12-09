@@ -56,6 +56,7 @@ describe('Temporal Monitoring Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    process.env.TEMPORAL_MIGRATION_MODE = 'new_only';
     worker = new StreamMonitorWorker({ baseInterval, enabled: true });
     
     // Stub scanCycle to avoid complex logic execution

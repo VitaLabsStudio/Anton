@@ -1,8 +1,8 @@
+import type Snoowrap from 'snoowrap';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { appConfig } from '../src/config/app-config';
 import { RedditClient } from '../src/platforms/reddit/client';
-import type Snoowrap from 'snoowrap';
 
 type Submission = Snoowrap.Submission;
 
@@ -61,6 +61,12 @@ vi.mock('../src/platforms/reddit/auth', () => ({
     userAgent: 'Antone/1.0.0 (by /u/antone_vita)',
   },
   validateRedditCredentials: vi.fn(),
+  getRedditCredentials: vi.fn(() => ({
+    clientId: 'reddit_client',
+    clientSecret: 'reddit_secret',
+    refreshToken: 'refresh_token=mock_token_part1_mock_token_part2',
+    userAgent: 'Antone/1.0.0 (by /u/antone_vita)',
+  })),
 }));
 
 vi.mock('../src/utils/logger', () => ({
@@ -120,9 +126,7 @@ describe('RedditClient', () => {
       author: { name: 'redditor', id: 't2_redditor' },
     } as unknown as Submission;
 
-    const spy = vi
-      .spyOn(client, 'searchSubreddits')
-      .mockResolvedValue([submission]);
+    const spy = vi.spyOn(client, 'searchSubreddits').mockResolvedValue([submission]);
 
     const posts = await client.search('hydrate');
     expect(posts).toHaveLength(1);

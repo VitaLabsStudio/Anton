@@ -1,9 +1,0 @@
-schema: 1
-story: '2.4'
-story_title: 'Signal 4 - Semantic Topic Filter'
-gate: PASS
-status_reason: 'Signal 4 now executes through `StreamMonitorWorker` via the `analyzePostSignals` fan-out; metaphoric posts are culled before the Karma Gate and the combined signal work stays within the 2s budget.'
-reviewer: 'Quinn (Test Architect)'
-updated: '2025-12-08T15:30:00Z'
-top_issues: []
-waiver: { active: false }

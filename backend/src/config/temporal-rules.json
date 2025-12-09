@@ -1,0 +1,453 @@
+{
+  "version": "0.3",
+  "rules": [
+    {
+      "id": "sunday_morning_peak",
+      "name": "Sunday Morning Peak Suffering",
+      "priority": 80,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 0, "hourStart": 6, "hourEnd": 11 },
+      "strategy": {
+        "phase": "peak_suffering",
+        "monitoringMultiplier": 3.0,
+        "isPriority": true
+      },
+      "metadata": {
+        "description": "Peak hangover window - maximize monitoring and priority queue",
+        "createdBy": "system"
+      }
+    },
+    {
+      "id": "saturday_morning_peak",
+      "name": "Saturday Morning Peak Suffering",
+      "priority": 70,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 6, "hourStart": 6, "hourEnd": 11 },
+      "strategy": {
+        "phase": "peak_suffering",
+        "monitoringMultiplier": 2.0,
+        "isPriority": true
+      },
+      "metadata": {
+        "description": "Secondary peak window - double monitoring and priority queue",
+        "createdBy": "system"
+      }
+    },
+    {
+      "id": "thursday_prevention",
+      "name": "Thursday Evening Prevention Campaign",
+      "priority": 60,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 4, "hourStart": 17, "hourEnd": 21 },
+      "strategy": {
+        "phase": "prevention",
+        "monitoringMultiplier": 1.5,
+        "archetypePreferences": ["COACH", "CREDIBILITY_ANCHOR"],
+        "archetypeWeights": [0.7, 0.3],
+        "toneAdjustment": "preventive_educational",
+        "sssThresholdAdjustment": -0.15,
+        "isPriority": true,
+        "keywordTargets": ["weekend plans", "going out", "party", "drinks tonight"]
+      },
+      "metadata": {
+        "description": "Pre-weekend prevention targeting users planning to drink",
+        "createdBy": "system"
+      }
+    },
+    {
+      "id": "friday_night",
+      "name": "Friday Night Monitoring Boost",
+      "priority": 50,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 5, "hourStart": 22, "hourEnd": 2 },
+      "strategy": {
+        "phase": "peak_suffering",
+        "monitoringMultiplier": 1.5
+      },
+      "metadata": {
+        "description": "Friday 10pm-2am monitoring uplift",
+        "createdBy": "system"
+      }
+    },
+    {
+      "id": "saturday_night",
+      "name": "Saturday Night Monitoring Boost",
+      "priority": 50,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 6, "hourStart": 22, "hourEnd": 2 },
+      "strategy": {
+        "phase": "peak_suffering",
+        "monitoringMultiplier": 1.5
+      },
+      "metadata": {
+        "description": "Saturday 10pm-2am monitoring uplift",
+        "createdBy": "system"
+      }
+    },
+    {
+      "id": "sunday_early_morning",
+      "name": "Sunday Early Morning Continuation",
+      "priority": 50,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 0, "hourStart": 0, "hourEnd": 2 },
+      "strategy": {
+        "phase": "peak_suffering",
+        "monitoringMultiplier": 1.5
+      },
+      "metadata": {
+        "description": "Sunday 12am-2am continuation of weekend monitoring uplift",
+        "createdBy": "system"
+      }
+    },
+    {
+      "id": "late_night_empathetic_sun",
+      "name": "Late Night Empathetic Sunday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 0, "hourStart": 22, "hourEnd": 2 },
+      "strategy": {
+        "toneAdjustment": "empathetic_late_night",
+        "archetypePreferences": ["HUMOR_LIGHT", "STORYLET", "COACH"],
+        "archetypeWeights": [0.4, 0.35, 0.25],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "late_night_empathetic_mon",
+      "name": "Late Night Empathetic Monday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 1, "hourStart": 22, "hourEnd": 2 },
+      "strategy": {
+        "toneAdjustment": "empathetic_late_night",
+        "archetypePreferences": ["HUMOR_LIGHT", "STORYLET", "COACH"],
+        "archetypeWeights": [0.4, 0.35, 0.25],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "late_night_empathetic_tue",
+      "name": "Late Night Empathetic Tuesday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 2, "hourStart": 22, "hourEnd": 2 },
+      "strategy": {
+        "toneAdjustment": "empathetic_late_night",
+        "archetypePreferences": ["HUMOR_LIGHT", "STORYLET", "COACH"],
+        "archetypeWeights": [0.4, 0.35, 0.25],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "late_night_empathetic_wed",
+      "name": "Late Night Empathetic Wednesday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 3, "hourStart": 22, "hourEnd": 2 },
+      "strategy": {
+        "toneAdjustment": "empathetic_late_night",
+        "archetypePreferences": ["HUMOR_LIGHT", "STORYLET", "COACH"],
+        "archetypeWeights": [0.4, 0.35, 0.25],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "late_night_empathetic_thu",
+      "name": "Late Night Empathetic Thursday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 4, "hourStart": 22, "hourEnd": 2 },
+      "strategy": {
+        "toneAdjustment": "empathetic_late_night",
+        "archetypePreferences": ["HUMOR_LIGHT", "STORYLET", "COACH"],
+        "archetypeWeights": [0.4, 0.35, 0.25],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "late_night_empathetic_fri",
+      "name": "Late Night Empathetic Friday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 5, "hourStart": 22, "hourEnd": 2 },
+      "strategy": {
+        "toneAdjustment": "empathetic_late_night",
+        "archetypePreferences": ["HUMOR_LIGHT", "STORYLET", "COACH"],
+        "archetypeWeights": [0.4, 0.35, 0.25],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "late_night_empathetic_sat",
+      "name": "Late Night Empathetic Saturday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 6, "hourStart": 22, "hourEnd": 2 },
+      "strategy": {
+        "toneAdjustment": "empathetic_late_night",
+        "archetypePreferences": ["HUMOR_LIGHT", "STORYLET", "COACH"],
+        "archetypeWeights": [0.4, 0.35, 0.25],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "morning_actionable_sun",
+      "name": "Morning Actionable Sunday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 0, "hourStart": 6, "hourEnd": 11 },
+      "strategy": {
+        "toneAdjustment": "urgent_actionable",
+        "archetypePreferences": ["CHECKLIST", "COACH", "PROBLEM_SOLUTION_DIRECT"],
+        "archetypeWeights": [0.45, 0.35, 0.2],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "morning_actionable_mon",
+      "name": "Morning Actionable Monday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 1, "hourStart": 6, "hourEnd": 11 },
+      "strategy": {
+        "toneAdjustment": "urgent_actionable",
+        "archetypePreferences": ["CHECKLIST", "COACH", "PROBLEM_SOLUTION_DIRECT"],
+        "archetypeWeights": [0.45, 0.35, 0.2],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "morning_actionable_tue",
+      "name": "Morning Actionable Tuesday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 2, "hourStart": 6, "hourEnd": 11 },
+      "strategy": {
+        "toneAdjustment": "urgent_actionable",
+        "archetypePreferences": ["CHECKLIST", "COACH", "PROBLEM_SOLUTION_DIRECT"],
+        "archetypeWeights": [0.45, 0.35, 0.2],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "morning_actionable_wed",
+      "name": "Morning Actionable Wednesday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 3, "hourStart": 6, "hourEnd": 11 },
+      "strategy": {
+        "toneAdjustment": "urgent_actionable",
+        "archetypePreferences": ["CHECKLIST", "COACH", "PROBLEM_SOLUTION_DIRECT"],
+        "archetypeWeights": [0.45, 0.35, 0.2],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "morning_actionable_thu",
+      "name": "Morning Actionable Thursday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 4, "hourStart": 6, "hourEnd": 11 },
+      "strategy": {
+        "toneAdjustment": "urgent_actionable",
+        "archetypePreferences": ["CHECKLIST", "COACH", "PROBLEM_SOLUTION_DIRECT"],
+        "archetypeWeights": [0.45, 0.35, 0.2],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "morning_actionable_fri",
+      "name": "Morning Actionable Friday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 5, "hourStart": 6, "hourEnd": 11 },
+      "strategy": {
+        "toneAdjustment": "urgent_actionable",
+        "archetypePreferences": ["CHECKLIST", "COACH", "PROBLEM_SOLUTION_DIRECT"],
+        "archetypeWeights": [0.45, 0.35, 0.2],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "morning_actionable_sat",
+      "name": "Morning Actionable Saturday",
+      "priority": 40,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 6, "hourStart": 6, "hourEnd": 11 },
+      "strategy": {
+        "toneAdjustment": "urgent_actionable",
+        "archetypePreferences": ["CHECKLIST", "COACH", "PROBLEM_SOLUTION_DIRECT"],
+        "archetypeWeights": [0.45, 0.35, 0.2],
+        "monitoringMultiplier": 1.1
+      }
+    },
+    {
+      "id": "afternoon_educational_sun",
+      "name": "Afternoon Educational Sunday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 0, "hourStart": 14, "hourEnd": 18 },
+      "strategy": {
+        "toneAdjustment": "reflective_educational",
+        "archetypePreferences": ["CREDIBILITY_ANCHOR", "MYTHBUST", "COACH"],
+        "archetypeWeights": [0.45, 0.35, 0.2]
+      }
+    },
+    {
+      "id": "afternoon_educational_mon",
+      "name": "Afternoon Educational Monday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 1, "hourStart": 14, "hourEnd": 18 },
+      "strategy": {
+        "toneAdjustment": "reflective_educational",
+        "archetypePreferences": ["CREDIBILITY_ANCHOR", "MYTHBUST", "COACH"],
+        "archetypeWeights": [0.45, 0.35, 0.2]
+      }
+    },
+    {
+      "id": "afternoon_educational_tue",
+      "name": "Afternoon Educational Tuesday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 2, "hourStart": 14, "hourEnd": 18 },
+      "strategy": {
+        "toneAdjustment": "reflective_educational",
+        "archetypePreferences": ["CREDIBILITY_ANCHOR", "MYTHBUST", "COACH"],
+        "archetypeWeights": [0.45, 0.35, 0.2]
+      }
+    },
+    {
+      "id": "afternoon_educational_wed",
+      "name": "Afternoon Educational Wednesday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 3, "hourStart": 14, "hourEnd": 18 },
+      "strategy": {
+        "toneAdjustment": "reflective_educational",
+        "archetypePreferences": ["CREDIBILITY_ANCHOR", "MYTHBUST", "COACH"],
+        "archetypeWeights": [0.45, 0.35, 0.2]
+      }
+    },
+    {
+      "id": "afternoon_educational_thu",
+      "name": "Afternoon Educational Thursday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 4, "hourStart": 14, "hourEnd": 18 },
+      "strategy": {
+        "toneAdjustment": "reflective_educational",
+        "archetypePreferences": ["CREDIBILITY_ANCHOR", "MYTHBUST", "COACH"],
+        "archetypeWeights": [0.45, 0.35, 0.2]
+      }
+    },
+    {
+      "id": "afternoon_educational_fri",
+      "name": "Afternoon Educational Friday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 5, "hourStart": 14, "hourEnd": 18 },
+      "strategy": {
+        "toneAdjustment": "reflective_educational",
+        "archetypePreferences": ["CREDIBILITY_ANCHOR", "MYTHBUST", "COACH"],
+        "archetypeWeights": [0.45, 0.35, 0.2]
+      }
+    },
+    {
+      "id": "afternoon_educational_sat",
+      "name": "Afternoon Educational Saturday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 6, "hourStart": 14, "hourEnd": 18 },
+      "strategy": {
+        "toneAdjustment": "reflective_educational",
+        "archetypePreferences": ["CREDIBILITY_ANCHOR", "MYTHBUST", "COACH"],
+        "archetypeWeights": [0.45, 0.35, 0.2]
+      }
+    },
+    {
+      "id": "evening_engagement_sun",
+      "name": "Evening Engagement Sunday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 0, "hourStart": 18, "hourEnd": 22 },
+      "strategy": {
+        "toneAdjustment": "engagement_evening",
+        "archetypePreferences": ["STORYLET", "HUMOR_LIGHT"],
+        "archetypeWeights": [0.55, 0.45]
+      }
+    },
+    {
+      "id": "evening_engagement_mon",
+      "name": "Evening Engagement Monday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 1, "hourStart": 18, "hourEnd": 22 },
+      "strategy": {
+        "toneAdjustment": "engagement_evening",
+        "archetypePreferences": ["STORYLET", "HUMOR_LIGHT"],
+        "archetypeWeights": [0.55, 0.45]
+      }
+    },
+    {
+      "id": "evening_engagement_tue",
+      "name": "Evening Engagement Tuesday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 2, "hourStart": 18, "hourEnd": 22 },
+      "strategy": {
+        "toneAdjustment": "engagement_evening",
+        "archetypePreferences": ["STORYLET", "HUMOR_LIGHT"],
+        "archetypeWeights": [0.55, 0.45]
+      }
+    },
+    {
+      "id": "evening_engagement_wed",
+      "name": "Evening Engagement Wednesday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 3, "hourStart": 18, "hourEnd": 22 },
+      "strategy": {
+        "toneAdjustment": "engagement_evening",
+        "archetypePreferences": ["STORYLET", "HUMOR_LIGHT"],
+        "archetypeWeights": [0.55, 0.45]
+      }
+    },
+    {
+      "id": "evening_engagement_thu",
+      "name": "Evening Engagement Thursday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 4, "hourStart": 18, "hourEnd": 22 },
+      "strategy": {
+        "toneAdjustment": "engagement_evening",
+        "archetypePreferences": ["STORYLET", "HUMOR_LIGHT"],
+        "archetypeWeights": [0.55, 0.45]
+      }
+    },
+    {
+      "id": "evening_engagement_fri",
+      "name": "Evening Engagement Friday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 5, "hourStart": 18, "hourEnd": 22 },
+      "strategy": {
+        "toneAdjustment": "engagement_evening",
+        "archetypePreferences": ["STORYLET", "HUMOR_LIGHT"],
+        "archetypeWeights": [0.55, 0.45]
+      }
+    },
+    {
+      "id": "evening_engagement_sat",
+      "name": "Evening Engagement Saturday",
+      "priority": 30,
+      "enabled": true,
+      "condition": { "type": "time_range", "day": 6, "hourStart": 18, "hourEnd": 22 },
+      "strategy": {
+        "toneAdjustment": "engagement_evening",
+        "archetypePreferences": ["STORYLET", "HUMOR_LIGHT"],
+        "archetypeWeights": [0.55, 0.45]
+      }
+    }
+  ]
+}

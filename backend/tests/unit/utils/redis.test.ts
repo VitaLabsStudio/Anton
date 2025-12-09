@@ -12,7 +12,7 @@ vi.mock('ioredis', () => {
   }
   return {
     Redis: MockRedis,
-    default: MockRedis
+    default: MockRedis,
   };
 });
 
@@ -24,12 +24,12 @@ describe('Redis Client', () => {
 
   it('should instantiate Redis client with correct config', async () => {
     process.env['REDIS_URL'] = 'redis://test-host:6379';
-    
+
     // Import re-triggers execution of the top-level code in redis.ts
     const { redis } = await import('../../../src/utils/redis');
-    
+
     expect(redis).toBeDefined();
-    // We can't easily check constructor arguments with this singleton pattern 
+    // We can't easily check constructor arguments with this singleton pattern
     // without more complex mocking, but we can check behavior.
     expect(mocks.on).toHaveBeenCalledWith('error', expect.any(Function));
     expect(mocks.on).toHaveBeenCalledWith('connect', expect.any(Function));

@@ -32,6 +32,13 @@ vi.mock('../src/platforms/twitter/auth', () => ({
     bearerToken: 'mock_bearer_token_that_is_at_least_fifty_characters_long_for_validation',
   },
   validateTwitterCredentials: vi.fn(),
+  getTwitterCredentials: vi.fn(() => ({
+    appKey: 'mock_api_key_12345',
+    appSecret: 'mock_api_secret',
+    accessToken: 'mock_access_token',
+    accessSecret: 'mock_access_secret',
+    bearerToken: 'mock_bearer_token_that_is_at_least_fifty_characters_long_for_validation',
+  })),
 }));
 
 // Mock logger
@@ -229,12 +236,10 @@ describe('TwitterClient', () => {
     it('should retry on transient errors', async () => {
       const transientError = createExtendedError('Server error', { statusCode: 500 });
 
-      mockSearch
-        .mockRejectedValueOnce(transientError)
-        .mockResolvedValue({
-          data: { data: [] },
-          rateLimit: { remaining: 100, limit: 100, reset: Date.now() / 1000 },
-        });
+      mockSearch.mockRejectedValueOnce(transientError).mockResolvedValue({
+        data: { data: [] },
+        rateLimit: { remaining: 100, limit: 100, reset: Date.now() / 1000 },
+      });
 
       const result = await client.search('test');
       expect(result).toEqual([]);
@@ -258,20 +263,17 @@ describe('No Blocking Sleep Calls', () => {
     const fs = await import('fs/promises');
     const path = await import('path');
 
-    const rateLimiterPath = path.join(
-      process.cwd(),
-      'src/utils/rate-limiter.ts'
-    );
+    const rateLimiterPath = path.join(process.cwd(), 'src/utils/rate-limiter.ts');
 
     try {
       const content = await fs.readFile(rateLimiterPath, 'utf-8');
 
       // Check for blocking patterns
       const blockingPatterns = [
-        /while\s*\([^)]*\)\s*{\s*}/,  // Empty while loops
-        /for\s*\([^)]*\)\s*{\s*}/,     // Empty for loops
-        /Atomics\.wait/,                // Blocking atomics
-        /while\s*\(true\)/,             // Infinite loops
+        /while\s*\([^)]*\)\s*{\s*}/, // Empty while loops
+        /for\s*\([^)]*\)\s*{\s*}/, // Empty for loops
+        /Atomics\.wait/, // Blocking atomics
+        /while\s*\(true\)/, // Infinite loops
       ];
 
       for (const pattern of blockingPatterns) {

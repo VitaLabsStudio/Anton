@@ -29,7 +29,7 @@ export class LinguisticIntentAnalyzer {
     // Check cache
     const cacheKey = this.getCacheKey(content);
     const cached = await this.getFromCache(cacheKey);
-    
+
     if (cached) {
       logger.debug({ cacheKey }, 'SSS cache hit');
       return cached;
@@ -43,7 +43,7 @@ export class LinguisticIntentAnalyzer {
       });
 
       const parsed = this.parseResponse(result.content);
-      
+
       // Fallback to GPT-5.1 if confidence too low
       if (result.confidence < 0.85) {
         logger.warn({ confidence: result.confidence }, 'DeepSeek confidence low, using fallback');
@@ -167,7 +167,7 @@ Respond with JSON:
       });
 
       const parsed = this.parseResponse(result.content);
-      
+
       const signalResult: SignalResult = {
         score: parsed.score,
         confidence: result.confidence,
@@ -179,7 +179,6 @@ Respond with JSON:
       await this.setCache(cacheKey, signalResult);
 
       return signalResult;
-
     } catch (error) {
       logger.error({ error }, 'GPT-5.1 fallback failed');
       // Absolute final fallback

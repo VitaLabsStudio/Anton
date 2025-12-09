@@ -5,7 +5,7 @@ import type { MiddlewareHandler } from 'hono';
 import { logger } from '../../utils/logger.js';
 
 export const requestTrace: MiddlewareHandler = async (c, next) => {
-  const requestId = c.req.headers.get('x-request-id') ?? crypto.randomUUID();
+  const requestId = c.req.header('x-request-id') ?? crypto.randomUUID();
   c.header('x-request-id', requestId);
   c.set('requestId', requestId);
 

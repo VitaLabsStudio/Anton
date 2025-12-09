@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
 import { Platform, type Author, type Post } from '@prisma/client';
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import { PostVelocityAnalyzer } from '../../../src/analysis/signal-3-velocity';
 
@@ -192,14 +192,21 @@ describe('PostVelocityAnalyzer', () => {
       rawMetrics: { likes: 12, replies: 3 },
     });
 
-    const { rate, temporalContext } = (analyzer as unknown as {
-      calculateNormalizedEngagementRate: (post: Post) => { rate: number; temporalContext: unknown };
-      calculateEngagementRate: (post: Post, hoursSincePost: number) => number;
-    }).calculateNormalizedEngagementRate(offPeakPost);
+    const { rate, temporalContext } = (
+      analyzer as unknown as {
+        calculateNormalizedEngagementRate: (post: Post) => {
+          rate: number;
+          temporalContext: unknown;
+        };
+        calculateEngagementRate: (post: Post, hoursSincePost: number) => number;
+      }
+    ).calculateNormalizedEngagementRate(offPeakPost);
 
-    const rawRate = (analyzer as unknown as {
-      calculateEngagementRate: (post: Post, hoursSincePost: number) => number;
-    }).calculateEngagementRate(offPeakPost, temporalContext.hoursSincePost);
+    const rawRate = (
+      analyzer as unknown as {
+        calculateEngagementRate: (post: Post, hoursSincePost: number) => number;
+      }
+    ).calculateEngagementRate(offPeakPost, temporalContext.hoursSincePost);
 
     const normalizationFactor = Math.max(
       0.6,

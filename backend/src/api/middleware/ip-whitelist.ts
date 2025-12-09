@@ -9,6 +9,7 @@
  */
 
 import type { Context, Next } from 'hono';
+
 import { logger } from '../../utils/logger.js';
 
 /**
@@ -60,10 +61,7 @@ export async function ipWhitelistMiddleware(c: Context, next: Next): Promise<Res
 
   if (!allowedIpsRaw) {
     logger.error('IP whitelist middleware: ALLOWED_IPS not configured');
-    return c.json(
-      { error: 'Internal Server Error', message: 'IP whitelist not configured' },
-      500
-    );
+    return c.json({ error: 'Internal Server Error', message: 'IP whitelist not configured' }, 500);
   }
 
   const allowedIps = allowedIpsRaw.split(',').map((ip) => ip.trim());

@@ -14,7 +14,7 @@ describe.skipIf(shouldSkip)('DeepSeekClient E2E', () => {
     });
 
     expect(result.content).toBeDefined();
-    // We expect JSON but the model might chat. 
+    // We expect JSON but the model might chat.
     // Just checking content presence and usage.
     expect(result.usage.total_tokens).toBeGreaterThan(0);
     expect(result.confidence).toBeGreaterThanOrEqual(0);

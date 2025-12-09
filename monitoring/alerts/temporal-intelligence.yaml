@@ -1,0 +1,20 @@
+groups:
+  - name: temporal_intelligence
+    rules:
+      - alert: TemporalLatencyHigh
+        expr: temporal_context_latency_ms_p99 > 10
+        for: 5m
+        annotations:
+          summary: Temporal context evaluation p99 latency > 10ms
+
+      - alert: TemporalEngagementAnomaly
+        expr: abs(rate(decision_engagement_rate[1h]) - rate(decision_engagement_rate[1h] offset 1w)) > 0.2
+        for: 30m
+        annotations:
+          summary: Temporal engagement rate deviated >20% from weekly baseline
+
+      - alert: TemporalRulesNotMatching
+        expr: sum(rate(temporal_rule_evaluation_total[1h])) == 0
+        for: 1h
+        annotations:
+          summary: No temporal rules matched in the last hour

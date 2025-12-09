@@ -1,26 +1,14 @@
 import axios from 'axios';
-import type {
-  AxiosError,
-  AxiosInstance,
-  AxiosRequestConfig,
-  AxiosResponse,
-} from 'axios';
+import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 import { appConfig } from '../../config/app-config.js';
 import { CircuitBreaker } from '../../utils/circuit-breaker.js';
 import { logger } from '../../utils/logger.js';
 import { threadsRateLimiter } from '../../utils/rate-limiter.js';
+import type { ClientStatus, IPlatformClient, Post, RequestOptions } from '../IPlatformClient.js';
 
 import { getThreadsCredentials } from './auth.js';
-import {
-  ZodThreadsSearchResponse,
-  toInternalPost,
-} from './threads.schemas.js';
-import type {
-  ClientStatus,
-  IPlatformClient,
-  Post,
-} from '../IPlatformClient.js';
+import { ZodThreadsSearchResponse, toInternalPost } from './threads.schemas.js';
 
 const THREADS_API_BASE = 'https://graph.threads.net/v1.0';
 const THREADS_HEALTH_CHECK_MS = 5 * 60 * 1000;
@@ -52,15 +40,9 @@ export class ThreadsClient implements IPlatformClient {
       return config;
     });
 
-    this.client.interceptors.response.use(
-      (response) => response,
-      this.handleApiError.bind(this)
-    );
+    this.client.interceptors.response.use((response) => response, this.handleApiError.bind(this));
 
-    this.healthCheckHandle = setInterval(
-      () => this.performHealthCheck(),
-      THREADS_HEALTH_CHECK_MS
-    );
+    this.healthCheckHandle = setInterval(() => this.performHealthCheck(), THREADS_HEALTH_CHECK_MS);
   }
 
   /**
@@ -88,9 +70,9 @@ export class ThreadsClient implements IPlatformClient {
     }
   }
 
-  private markUnavailable(reason: string): void {
+  private markUnavailable(reason: string, requestId?: string): void {
     if (this.isAvailable) {
-      logger.warn({ reason }, 'Marking Threads API as unavailable');
+      logger.warn({ reason, requestId }, 'Marking Threads API as unavailable');
     }
     this.isAvailable = false;
   }
@@ -102,18 +84,12 @@ export class ThreadsClient implements IPlatformClient {
     return `${token.slice(0, 6)}***${token.slice(-4)}`;
   }
 
-  private async handleApiError(
-    error: AxiosError
-  ): Promise<AxiosResponse<unknown>> {
+  private async handleApiError(error: AxiosError): Promise<AxiosResponse<unknown>> {
     const originalRequest = error.config as AxiosRequestConfig & {
       _isRetry?: boolean;
     };
 
-    if (
-      error.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._isRetry
-    ) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._isRetry) {
       originalRequest._isRetry = true;
       try {
         logger.warn('Threads token expired, attempting refresh');
@@ -151,18 +127,15 @@ export class ThreadsClient implements IPlatformClient {
       throw new Error('Missing Threads client id/secret for token refresh');
     }
 
-    const response = await axios.get(
-      'https://graph.facebook.com/v17.0/oauth/access_token',
-      {
-        timeout: 15_000,
-        params: {
-          grant_type: 'fb_exchange_token',
-          client_id: clientId,
-          client_secret: clientSecret,
-          fb_exchange_token: credentials.accessToken,
-        },
-      }
-    );
+    const response = await axios.get('https://graph.facebook.com/v17.0/oauth/access_token', {
+      timeout: 15_000,
+      params: {
+        grant_type: 'fb_exchange_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        fb_exchange_token: credentials.accessToken,
+      },
+    });
 
     const newToken = response.data?.access_token;
 
@@ -173,10 +146,7 @@ export class ThreadsClient implements IPlatformClient {
     credentials.update(newToken);
     process.env['THREADS_ACCESS_TOKEN'] = newToken;
 
-    logger.info(
-      { token: this.maskToken(newToken) },
-      'Threads access token refreshed'
-    );
+    logger.info({ token: this.maskToken(newToken) }, 'Threads access token refreshed');
 
     return newToken;
   }
@@ -196,10 +166,7 @@ export class ThreadsClient implements IPlatformClient {
       const username = response.data?.username ?? 'unknown';
       this.isAvailable = true;
 
-      logger.info(
-        { username },
-        'Threads credentials verified successfully'
-      );
+      logger.info({ username }, 'Threads credentials verified successfully');
 
       return {
         available: true,
@@ -216,16 +183,25 @@ export class ThreadsClient implements IPlatformClient {
     }
   }
 
-  async search(query: string): Promise<Post[]> {
+  async search(query: string, options?: RequestOptions): Promise<Post[]> {
     if (!this.isAvailable) {
-      logger.warn('Threads search skipped because Threads API is unavailable');
+      logger.warn(
+        { requestId: options?.requestId },
+        'Threads search skipped because Threads API is unavailable'
+      );
       return [];
     }
 
     try {
       const posts = await threadsRateLimiter.scheduleRead(() =>
         this.circuitBreaker.execute(async () => {
+          const headers: Record<string, string> = {};
+          if (options?.requestId) {
+            headers['x-request-id'] = options.requestId;
+          }
+
           const response = await this.client.get('/threads/search', {
+            headers,
             params: {
               q: query,
               limit: 50,
@@ -240,6 +216,7 @@ export class ThreadsClient implements IPlatformClient {
             {
               query,
               results: mapped.length,
+              requestId: options?.requestId,
             },
             'Threads search completed'
           );
@@ -247,6 +224,7 @@ export class ThreadsClient implements IPlatformClient {
           logger.debug(
             {
               rateLimiter: threadsRateLimiter.getStatus(),
+              requestId: options?.requestId,
             },
             'Threads rate limiter status after search'
           );
@@ -257,12 +235,16 @@ export class ThreadsClient implements IPlatformClient {
 
       return posts;
     } catch (error) {
-      this.markUnavailable('search_failure');
+      this.markUnavailable('search_failure', options?.requestId);
       throw error;
     }
   }
 
-  async reply(threadId: string, content: string): Promise<{ replyId: string }> {
+  async reply(
+    threadId: string,
+    content: string,
+    options?: RequestOptions
+  ): Promise<{ replyId: string }> {
     if (!this.isAvailable) {
       throw new Error('Threads API is currently unavailable');
     }
@@ -274,6 +256,7 @@ export class ThreadsClient implements IPlatformClient {
           dryRunId,
           threadId,
           content,
+          requestId: options?.requestId,
         },
         '[DRY RUN] Threads reply suppressed'
       );
@@ -287,15 +270,22 @@ export class ThreadsClient implements IPlatformClient {
     try {
       const payload = await threadsRateLimiter.scheduleWrite(() =>
         this.circuitBreaker.execute(async () => {
+          const headers: Record<string, string> = {};
+          if (options?.requestId) {
+            headers['x-request-id'] = options.requestId;
+          }
+
           const response = await this.client.post(
             `/threads/${threadId}/replies`,
-            { text: content }
+            { text: content },
+            { headers }
           );
 
           logger.info(
             {
               threadId,
               replyId: response.data?.id,
+              requestId: options?.requestId,
             },
             'Threads reply posted'
           );
@@ -303,6 +293,7 @@ export class ThreadsClient implements IPlatformClient {
           logger.debug(
             {
               rateLimiter: threadsRateLimiter.getStatus(),
+              requestId: options?.requestId,
             },
             'Threads rate limiter status after reply'
           );
@@ -317,7 +308,7 @@ export class ThreadsClient implements IPlatformClient {
 
       return payload;
     } catch (error) {
-      this.markUnavailable('reply_failure');
+      this.markUnavailable('reply_failure', options?.requestId);
       throw error;
     }
   }

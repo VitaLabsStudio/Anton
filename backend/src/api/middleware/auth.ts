@@ -7,6 +7,7 @@
  */
 
 import type { Context, Next } from 'hono';
+
 import { logger } from '../../utils/logger.js';
 
 export async function authMiddleware(c: Context, next: Next): Promise<Response | void> {

@@ -1,7 +1,7 @@
 import type { Author, Platform } from '@prisma/client';
 
-import { logger } from '../utils/logger';
-import { prisma } from '../utils/prisma';
+import { logger } from '../utils/logger.js';
+import { prisma } from '../utils/prisma.js';
 
 export interface SignalResult {
   score: number;
@@ -18,14 +18,14 @@ export interface InteractionEvent {
 
 const INTERACTION_WEIGHTS: Record<string, number> = {
   thanks: 0.15,
-  click: 0.10,
+  click: 0.1,
   purchase: 0.25,
-  block: -0.30,
-  report: -0.40,
-  hostile_reply: -0.20,
+  block: -0.3,
+  report: -0.4,
+  hostile_reply: -0.2,
 };
 
-const BASE_SCORE = 0.50;
+const BASE_SCORE = 0.5;
 
 export class AuthorContextAnalyzer {
   /**
@@ -59,7 +59,7 @@ export class AuthorContextAnalyzer {
         interactionCount: interactions.length,
       };
     } catch (error) {
-      logger.error('Author context analysis failed', { error, platform, platformId });
+      logger.error({ error, platform, platformId }, 'Author context analysis failed');
       // Return neutral score on error
       return {
         score: BASE_SCORE,
@@ -161,7 +161,7 @@ export class AuthorContextAnalyzer {
     if (newTags.length > 0) {
       const updatedTags = [...author.archetypeTags, ...newTags];
       await this.updateArchetypeTags(author.id, updatedTags).catch((err) =>
-        logger.error('Failed to update archetype tags', { err })
+        logger.error({ err }, 'Failed to update archetype tags')
       );
       return updatedTags;
     }
@@ -183,4 +183,5 @@ export const analyzeAuthorContext = (
   platform: Platform,
   platformId: string,
   handle: string
-): Promise<SignalResult> => authorContextAnalyzer.analyzeAuthorContext(platform, platformId, handle);
+): Promise<SignalResult> =>
+  authorContextAnalyzer.analyzeAuthorContext(platform, platformId, handle);

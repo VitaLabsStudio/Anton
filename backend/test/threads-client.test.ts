@@ -37,7 +37,7 @@ vi.mock('../src/utils/logger', () => ({
 }));
 
 describe('ThreadsClient', () => {
-let ThreadsClientClass: ThreadsClientConstructor;
+  let ThreadsClientClass: ThreadsClientConstructor;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -72,7 +72,7 @@ let ThreadsClientClass: ThreadsClientConstructor;
     delete process.env['REQUIRE_APPROVAL'];
   });
 
-function buildClient(): ThreadsClientInstance {
+  function buildClient(): ThreadsClientInstance {
     const client = new ThreadsClientClass();
     const healthHandle = (client as unknown as { healthCheckHandle?: number }).healthCheckHandle;
     if (healthHandle) {
@@ -114,10 +114,7 @@ function buildClient(): ThreadsClientInstance {
     const response = await client.reply('thread-1', 'Stay hydrated');
 
     expect(response.replyId).toBe('reply-789');
-    expect(mockPost).toHaveBeenCalledWith(
-      '/threads/thread-1/replies',
-      { text: 'Stay hydrated' }
-    );
+    expect(mockPost).toHaveBeenCalledWith('/threads/thread-1/replies', { text: 'Stay hydrated' });
   });
 
   it('verifyCredentials returns status and keeps availability', async () => {
@@ -194,7 +191,9 @@ function buildClient(): ThreadsClientInstance {
     await privateClient.performHealthCheck();
 
     expect(mockGet).toHaveBeenCalledWith('/me', expect.any(Object));
-    const recoveredCall = infoMock.mock.calls.find(([message]) => message === 'Threads API recovered during health check');
+    const recoveredCall = infoMock.mock.calls.find(
+      ([message]) => message === 'Threads API recovered during health check'
+    );
     expect(recoveredCall).toBeTruthy();
     expect(client.isOperational()).toBe(true);
   });

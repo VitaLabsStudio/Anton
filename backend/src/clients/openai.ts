@@ -4,7 +4,10 @@ import { logger } from '../utils/logger.js';
 
 import type { DeepSeekClientOptions, GenerateOptions, GenerateResult } from './deepseek.js';
 
-type OpenAIClientOptions = Pick<DeepSeekClientOptions, 'apiKey' | 'timeoutMs' | 'maxRetries' | 'model'>;
+type OpenAIClientOptions = Pick<
+  DeepSeekClientOptions,
+  'apiKey' | 'timeoutMs' | 'maxRetries' | 'model'
+>;
 
 export class OpenAIClient {
   private readonly baseUrl: string;
@@ -57,7 +60,7 @@ export class OpenAIClient {
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
+            Authorization: `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
           },
           timeout: this.timeoutMs,

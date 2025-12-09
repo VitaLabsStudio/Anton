@@ -82,6 +82,32 @@ const PROMETHEUS_METRIC_DEFINITIONS: Record<
     type: 'counter',
     skip: true,
   },
+  temporal_rule_evaluation: {
+    promName: 'temporal_rule_evaluations_total',
+    help: 'Total temporal rule evaluations',
+    type: 'counter',
+  },
+  temporal_context_latency_ms: {
+    promName: 'temporal_context_latency_ms_sum',
+    help: 'Total latency for temporal context evaluations (ms)',
+    type: 'counter',
+    skip: true,
+  },
+  temporal_context_latency_count: {
+    promName: 'temporal_context_latency_count',
+    help: 'Count of temporal context evaluations',
+    type: 'counter',
+  },
+  temporal_strategy_cache_hit: {
+    promName: 'temporal_strategy_cache_hits_total',
+    help: 'Temporal strategy cache hits',
+    type: 'counter',
+  },
+  temporal_strategy_cache_miss: {
+    promName: 'temporal_strategy_cache_misses_total',
+    help: 'Temporal strategy cache misses',
+    type: 'counter',
+  },
 };
 
 const DROPPED_PROM_LABELS = new Set(['key', 'raw', 'clamped']);
@@ -198,9 +224,7 @@ class MetricsRegistry implements MetricsAdapter {
     if (filtered.length === 0) {
       return '';
     }
-    const components = filtered.map(
-      ([key, value]) => `${key}="${this.escapeLabelValue(value)}"`
-    );
+    const components = filtered.map(([key, value]) => `${key}="${this.escapeLabelValue(value)}"`);
     return `{${components.join(',')}}`;
   }
 

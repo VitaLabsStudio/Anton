@@ -9,8 +9,9 @@
  * - Successful authentication
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Hono } from 'hono';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { authMiddleware } from '../../../api/middleware/auth.js';
 
 describe('Auth Middleware', () => {

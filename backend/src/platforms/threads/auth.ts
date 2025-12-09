@@ -36,10 +36,7 @@ export function validateThreadsCredentials(): ThreadsCredentialsStore {
     logger.warn('THREADS_ACCESS_TOKEN does not appear to use the Meta/EAA prefix');
   }
 
-  logger.info(
-    { token: maskToken(token) },
-    'Threads credentials validated (token masked)'
-  );
+  logger.info({ token: maskToken(token) }, 'Threads credentials validated (token masked)');
 
   return new ThreadsCredentialsStore(token);
 }

@@ -89,10 +89,7 @@ export class KarmaGate {
           karma,
         };
 
-        logger.warn(
-          result,
-          'KarmaGate BLOCKED: Missing account creation timestamp'
-        );
+        logger.warn(result, 'KarmaGate BLOCKED: Missing account creation timestamp');
 
         return result;
       }

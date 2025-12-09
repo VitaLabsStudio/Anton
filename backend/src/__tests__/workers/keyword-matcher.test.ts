@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
+
 import { KeywordMatcher } from '../../workers/keyword-matcher.js';
 
 describe('KeywordMatcher', () => {
@@ -81,9 +82,7 @@ describe('KeywordMatcher', () => {
     });
 
     it('should detect multiple categories', () => {
-      const result = matcher.getMatches(
-        'Woke up hungover, nauseous, and experiencing hangxiety'
-      );
+      const result = matcher.getMatches('Woke up hungover, nauseous, and experiencing hangxiety');
 
       expect(result.matched).toBe(true);
       expect(result.categories).toContain('direct_hangover');
@@ -100,17 +99,13 @@ describe('KeywordMatcher', () => {
     });
 
     it('should detect exclusion patterns', () => {
-      const result = matcher.getMatches(
-        'I love The Hangover movie with Bradley Cooper'
-      );
+      const result = matcher.getMatches('I love The Hangover movie with Bradley Cooper');
 
       expect(result.hasExclusion).toBe(true);
     });
 
     it('should flag medical disclaimer requirements', () => {
-      const result = matcher.getMatches(
-        'This is a medical emergency and I need hospital care'
-      );
+      const result = matcher.getMatches('This is a medical emergency and I need hospital care');
 
       expect(result.requiresMedicalDisclaimer).toBe(true);
     });
@@ -119,9 +114,7 @@ describe('KeywordMatcher', () => {
   describe('Performance (PERF-001)', () => {
     it('should match quickly on large corpus', () => {
       // Generate large text corpus
-      const largeText = Array(1000)
-        .fill('This is random text that does not match. ')
-        .join('');
+      const largeText = Array(1000).fill('This is random text that does not match. ').join('');
 
       const start = performance.now();
       const result = matcher.matches(largeText);
@@ -135,9 +128,7 @@ describe('KeywordMatcher', () => {
       const largeText =
         'Some filler text. ' +
         Array(100)
-          .fill(
-            'I am hungover. I have a headache. I feel nauseous. I need help. '
-          )
+          .fill('I am hungover. I have a headache. I feel nauseous. I need help. ')
           .join('') +
         'More filler text.';
 

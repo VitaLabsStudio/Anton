@@ -173,7 +173,9 @@ describe('HealthCheckService', () => {
       if (result.components.worker.healthy) {
         expect(result.components.worker.message).toContain('posts processed');
       } else {
-        expect(result.components.worker.message).toMatch(/inactive|not found|No worker heartbeat|no posts processed/i);
+        expect(result.components.worker.message).toMatch(
+          /inactive|not found|No worker heartbeat|no posts processed/i
+        );
       }
     });
 

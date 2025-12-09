@@ -1,0 +1,30 @@
+{
+  "title": "Temporal Intelligence",
+  "panels": [
+    {
+      "title": "Temporal Context Latency (p50/p95/p99)",
+      "type": "graph",
+      "targets": [{ "expr": "histogram_quantile(0.99, temporal_context_latency_ms)" }]
+    },
+    {
+      "title": "Rule Match Distribution",
+      "type": "barchart",
+      "targets": [{ "expr": "sum by (rule_id) (temporal_rule_evaluation_total)" }]
+    },
+    {
+      "title": "Engagement Heatmap (Hour × Day)",
+      "type": "heatmap",
+      "targets": [{ "expr": "avg by (hour, day) (decision_engagement_rate)" }]
+    },
+    {
+      "title": "Cache Hit Rate",
+      "type": "gauge",
+      "targets": [{ "expr": "sum(temporal_strategy_cache_hit) / (sum(temporal_strategy_cache_hit) + sum(temporal_strategy_cache_miss))" }]
+    },
+    {
+      "title": "Monitoring Multiplier",
+      "type": "timeseries",
+      "targets": [{ "expr": "avg(temporal_monitoring_multiplier)" }]
+    }
+  ]
+}

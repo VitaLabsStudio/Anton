@@ -66,6 +66,7 @@ describe('Temporal Archetype Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     engine = new DecisionEngine();
+    process.env.TEMPORAL_MIGRATION_MODE = 'new_only';
   });
 
   it('should prioritize temporally preferred archetype if author matches', async () => {

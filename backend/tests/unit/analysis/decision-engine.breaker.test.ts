@@ -68,7 +68,8 @@ function createMetricsSpy() {
 describe('DecisionEngine circuit breakers', () => {
   it('emits metrics on breaker open/close and serves fallbacks', async () => {
     vi.resetModules();
-    const { DecisionEngine, DEFAULT_THRESHOLDS } = await import('../../../src/analysis/decision-engine.js');
+    const { DecisionEngine, DEFAULT_THRESHOLDS } =
+      await import('../../../src/analysis/decision-engine.js');
     const metrics = createMetricsSpy();
     const engine = new DecisionEngine({
       thresholds: DEFAULT_THRESHOLDS,

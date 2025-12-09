@@ -46,10 +46,7 @@ export class SpamFilter {
       'mr\\. chow',
     ];
 
-    this.mediaPatterns = new RegExp(
-      `\\b(${mediaTerms.join('|')})\\b`,
-      'i'
-    );
+    this.mediaPatterns = new RegExp(`\\b(${mediaTerms.join('|')})\\b`, 'i');
 
     // Crypto/scam patterns
     const cryptoTerms = [
@@ -82,10 +79,7 @@ export class SpamFilter {
       'work from home',
     ];
 
-    this.cryptoPatterns = new RegExp(
-      `\\b(${cryptoTerms.join('|')})\\b`,
-      'i'
-    );
+    this.cryptoPatterns = new RegExp(`\\b(${cryptoTerms.join('|')})\\b`, 'i');
 
     logger.info('SpamFilter (Tier 2) initialized with permissive thresholds');
   }
@@ -133,9 +127,7 @@ export class SpamFilter {
   /**
    * Batch check for multiple posts
    */
-  checkBatch(
-    posts: Array<{ content: string; author?: AuthorMetadata }>
-  ): SpamCheckResult[] {
+  checkBatch(posts: Array<{ content: string; author?: AuthorMetadata }>): SpamCheckResult[] {
     return posts.map((post) => this.check(post.content, post.author));
   }
 

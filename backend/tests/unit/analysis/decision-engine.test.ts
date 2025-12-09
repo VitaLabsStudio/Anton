@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Author, Post } from '@prisma/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/utils/prisma.js', () => ({
   prisma: {
@@ -25,7 +25,10 @@ const trsSignal = { score: 0.8, confidence: 0.9, context: 'actual_hangover' };
 const safetySignal = { shouldDisengage: false, flags: [] };
 const powerUserSignal = { isPowerUser: true, confidence: 0.95 };
 const competitorSignal = { detected: true, name: 'Acme', confidence: 0.8 };
-const temporalSignal = { context: { multiplier: 1, dayOfWeek: 0, hour: 8, reason: 'baseline' }, timestamp: new Date() };
+const temporalSignal = {
+  context: { multiplier: 1, dayOfWeek: 0, hour: 8, reason: 'baseline' },
+  timestamp: new Date(),
+};
 
 type SignalModule = { [key: string]: () => Promise<unknown> };
 
@@ -43,6 +46,12 @@ vi.mock('../../../src/analysis/signal-4-semantic.js', () => ({
 }));
 vi.mock('../../../src/analysis/safety-protocol.js', () => ({
   checkSafetyProtocol: vi.fn(() => Promise.resolve(safetySignal)),
+  SafetySeverity: {
+    CRITICAL: 'CRITICAL',
+    HIGH: 'HIGH',
+    MEDIUM: 'MEDIUM',
+    LOW: 'LOW',
+  },
 }));
 vi.mock('../../../src/analysis/power-user-detector.js', () => ({
   detectPowerUser: vi.fn(() => Promise.resolve(powerUserSignal)),
@@ -72,7 +81,9 @@ function createPrismaStub(overrides: Partial<Record<string, unknown>> = {}) {
     $transaction: undefined,
     ...overrides,
   };
-  (stub as any).$transaction = vi.fn(async (callback: (tx: typeof stub) => Promise<void>) => callback(stub));
+  (stub as any).$transaction = vi.fn(async (callback: (tx: typeof stub) => Promise<void>) =>
+    callback(stub)
+  );
   return stub;
 }
 
@@ -158,7 +169,10 @@ describe('DecisionEngine', () => {
   });
 
   it('calculates uncertainty without NaN when confidences/sampleSize are missing', () => {
-    const engine = new DecisionEngine({ thresholds: baseThresholds, prismaClient: createPrismaStub() });
+    const engine = new DecisionEngine({
+      thresholds: baseThresholds,
+      prismaClient: createPrismaStub(),
+    });
     const weights = baseWeights({ sampleSize: 0 });
 
     const result = engine.calculateUncertainty(
@@ -177,7 +191,10 @@ describe('DecisionEngine', () => {
   });
 
   it('falls back to defaults when sample size is invalid in shrinkage', () => {
-    const engine = new DecisionEngine({ thresholds: baseThresholds, prismaClient: createPrismaStub() });
+    const engine = new DecisionEngine({
+      thresholds: baseThresholds,
+      prismaClient: createPrismaStub(),
+    });
     const fallback = baseWeights();
 
     const shrunk = engine.applyBayesianShrinkage(
@@ -198,7 +215,10 @@ describe('DecisionEngine', () => {
   });
 
   it('shrinks interaction weights along with base weights', () => {
-    const engine = new DecisionEngine({ thresholds: baseThresholds, prismaClient: createPrismaStub() });
+    const engine = new DecisionEngine({
+      thresholds: baseThresholds,
+      prismaClient: createPrismaStub(),
+    });
     const fallback = baseWeights({
       sssArsInteraction: 0.05,
       evsTrsInteraction: 0.03,
@@ -225,12 +245,22 @@ describe('DecisionEngine', () => {
   });
 
   it('enforces safety/TRS gates in mode probabilities', () => {
-    const engine = new DecisionEngine({ thresholds: baseThresholds, prismaClient: createPrismaStub() });
+    const engine = new DecisionEngine({
+      thresholds: baseThresholds,
+      prismaClient: createPrismaStub(),
+    });
 
     const gated = engine.selectMode({
       sss: { score: 0.9, confidence: 0.9, category: 'high_solution' },
       ars: { score: 0.9, confidence: 0.9, archetypes: [], interactionCount: 0 },
-      evs: { ratio: 5, category: 'viral', confidence: 0.8, baselineRate: 1, currentRate: 5, temporalContext: { hoursSincePost: 1 } },
+      evs: {
+        ratio: 5,
+        category: 'viral',
+        confidence: 0.8,
+        baselineRate: 1,
+        currentRate: 5,
+        temporalContext: { hoursSincePost: 1 },
+      },
       trs: { score: 0.4, confidence: 0.8, context: 'metaphor' },
       safety: { shouldDisengage: false, flags: [] },
       powerUser: { isPowerUser: false, confidence: 0.5 },
@@ -256,7 +286,9 @@ describe('DecisionEngine', () => {
       decision: { create: vi.fn() },
       post: { update: vi.fn() },
       archetype: { findUnique: vi.fn(async () => ({ id: 'arch-123', name: 'general' })) },
-      $transaction: vi.fn(async (callback: (tx: typeof fakePrisma) => Promise<void>) => callback(fakePrisma)),
+      $transaction: vi.fn(async (callback: (tx: typeof fakePrisma) => Promise<void>) =>
+        callback(fakePrisma)
+      ),
     };
 
     const engine = new DecisionEngine({

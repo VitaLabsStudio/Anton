@@ -3,9 +3,10 @@
  * Uses Threads API hashtag search functionality.
  */
 
-import { ThreadsClient } from './client.js';
 import { logger } from '../../utils/logger.js';
 import type { DetectedPost } from '../../workers/types.js';
+
+import { ThreadsClient } from './client.js';
 
 export class ThreadsMonitor {
   private client: ThreadsClient;
@@ -72,9 +73,7 @@ export class ThreadsMonitor {
       // Limit memory usage
       if (this.processedIds.size > this.MAX_PROCESSED_IDS) {
         const idsArray = Array.from(this.processedIds);
-        this.processedIds = new Set(
-          idsArray.slice(idsArray.length - this.MAX_PROCESSED_IDS / 2)
-        );
+        this.processedIds = new Set(idsArray.slice(idsArray.length - this.MAX_PROCESSED_IDS / 2));
       }
 
       logger.info(

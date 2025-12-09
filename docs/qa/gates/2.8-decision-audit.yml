@@ -1,9 +1,185 @@
 schema: 1
 story: '2.8'
 story_title: 'Decision Audit & Logging'
-gate: PASS
-status_reason: 'Auditing plan approved.'
+gate: CONCERNS
+status_reason: 'Story conflates three distinct architectural concerns (logging, storage, analytics) requiring architectural design before implementation. Five critical issues identified.'
 reviewer: 'Quinn (Test Architect)'
-updated: '2025-12-05T12:00:00Z'
-top_issues: []
-waiver: { active: false }
+updated: '2025-12-06T20:00:00Z'
+
+top_issues:
+  - severity: high
+    category: architecture
+    description: 'AC7 complex queries have no implementation approach specified. Story provides example "SSS > 0.9 AND mode = DISENGAGED" but current API only supports simple equality filters.'
+    suggested_owner: architect
+    refs: ['docs/stories/2.8.story.md:27']
+
+  - severity: high
+    category: architecture
+    description: 'AC5 archiving strategy critically underspecified. "Volume storage" location undefined, archive format unspecified, GDPR compliance approach missing.'
+    suggested_owner: architect
+    refs: ['docs/stories/2.8.story.md:25']
+
+  - severity: high
+    category: performance
+    description: 'No database indexing strategy for filtered queries. With 90-day retention, queries will be slow without composite indexes on (created_at, mode), (created_at, composite_score), and signal scores.'
+    suggested_owner: architect
+    refs: ['backend/src/api/routes/decisions.ts']
+
+  - severity: medium
+    category: architecture
+    description: 'Request tracing propagation incomplete. AC2 requires requestId propagation "through all services" but no specification for external APIs (Twitter, Reddit, DeepSeek) or queue processing.'
+    suggested_owner: architect
+    refs: ['docs/stories/2.8.story.md:19', 'backend/src/api/middleware/request-trace.ts']
+
+  - severity: medium
+    category: design
+    description: 'Logging vs storage boundaries unclear. Story conflates operational logging (Pino for debugging) with decision data storage (PostgreSQL audit trail) with analytics queries (pattern analysis).'
+    suggested_owner: architect
+    refs: ['docs/stories/2.8.story.md']
+
+waiver:
+  active: false
+
+quality_score: 40
+# Calculation: 100 - (20 × 0 FAILs) - (10 × 6 concerns) = 40
+# Concerns: 5 top_issues + 1 from NFR (maintainability)
+
+expires: '2025-12-20T20:00:00Z'
+# 2 weeks from review - must be resolved by then
+
+evidence:
+  tests_reviewed: 0
+  # No tests exist yet - story is in Draft status
+
+  risks_identified: 5
+  # Five critical architectural issues identified
+
+  trace:
+    ac_covered: [1, 2, 3, 4, 6]
+    # ACs 1-4, 6 are implementable with current spec
+    ac_gaps: [5, 7]
+    # AC5 (archiving) and AC7 (complex queries) are underspecified
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Redaction strategy for sensitive data specified in Dev Notes. GDPR compliance gap in archiving but can be resolved.'
+
+  performance:
+    status: CONCERNS
+    notes: 'No indexing strategy specified. Composite indexes required for filtered queries. PostgreSQL partitioning recommended over manual archiving for better query performance.'
+
+  reliability:
+    status: PASS
+    notes: 'Structured logging with Pino provides good observability foundation. Request tracing exists but needs propagation enhancement.'
+
+  maintainability:
+    status: CONCERNS
+    notes: 'Story mixes three distinct concerns (logging, storage, analytics) which will lead to tangled implementation. Recommend architectural separation.'
+
+recommendations:
+  immediate:
+    # Must fix before implementation can proceed
+
+    - action: 'Engage Winston (Architect) to design observability and audit architecture'
+      rationale: 'Story requires architectural decisions on separation of concerns (logging vs storage vs analytics), database partitioning strategy, indexing approach, and query complexity level.'
+      refs: ['.ai/architect-instructions-story-2.8.md']
+      blocking: true
+
+    - action: 'Architect must create ADR for decision audit architecture'
+      rationale: 'Document architectural decisions on logging strategy, storage approach, analytics complexity, and request tracing propagation.'
+      refs: ['docs/architecture/adr-008-decision-audit-architecture.md']
+      blocking: true
+
+    - action: 'Architect must specify database performance strategy'
+      rationale: 'Provide specific CREATE INDEX statements for composite indexes. Recommend partitioning vs manual archiving with detailed rationale.'
+      refs: ['docs/architecture/story-2.8-implementation-guidance.md']
+      blocking: true
+
+    - action: 'Architect must clarify archiving approach'
+      rationale: 'Specify exact storage location (Docker volume path, S3 bucket, etc.), archive format (compressed JSON, Parquet, SQL dump), GDPR deletion workflow, and restore process.'
+      refs: ['docs/architecture/story-2.8-implementation-guidance.md']
+      blocking: true
+
+    - action: 'Architect must recommend story split or simplification'
+      rationale: 'Story 2.8 attempts too much in one implementation. Recommend splitting into 2.8a (Logging), 2.8b (API), 2.8c (Archiving) OR simplifying scope by deferring analytics.'
+      refs: ['docs/architecture/story-2.8-implementation-guidance.md']
+      blocking: true
+
+  future:
+    # Can be addressed in subsequent stories
+
+    - action: 'Consider dedicated analytics API for complex queries'
+      rationale: 'AC7 complex queries (SSS > 0.9 AND mode = DISENGAGED) may be better served by dedicated analytics endpoint or deferred to future story 2.15+ once decision data volume is substantial.'
+      refs: ['docs/stories/2.8.story.md:27']
+
+    - action: 'Evaluate log aggregation platform for production'
+      rationale: 'Current approach is Pino → stdout → Docker logs. For production observability, consider Loki (free, self-hosted) or CloudWatch (if moving to cloud). Not critical for initial deployment.'
+      refs: ['docs/architecture/observability-strategy.md']
+
+    - action: 'Add performance tests for decision queries at scale'
+      rationale: 'Once indexing strategy is implemented, create performance tests that validate query response times with 90 days of decision data (estimated 50k-100k records).'
+      refs: ['backend/tests/performance/']
+
+workflow:
+  next_steps:
+    - step: 1
+      agent: user
+      action: 'Start Winston (Architect) in new session'
+      deliverable: 'New Claude session with architect agent'
+
+    - step: 2
+      agent: user
+      action: 'Provide architect instructions from .ai/architect-instructions-story-2.8.md'
+      deliverable: 'Winston receives comprehensive context and task specification'
+
+    - step: 3
+      agent: winston
+      action: 'Create architectural deliverables'
+      deliverable: |
+        - docs/architecture/adr-008-decision-audit-architecture.md
+        - docs/architecture/observability-strategy.md
+        - docs/architecture/story-2.8-implementation-guidance.md
+
+    - step: 4
+      agent: bob
+      action: 'Refine story 2.8 based on Winston architecture decisions'
+      deliverable: 'Updated story file(s) with clarified ACs, archiving details, database tasks'
+
+    - step: 5
+      agent: quinn
+      action: 'Re-review refined story and update gate to PASS'
+      deliverable: 'Updated quality gate with PASS decision'
+
+    - step: 6
+      agent: dev
+      action: 'Implement story following architectural guidance'
+      deliverable: 'Working implementation with tests'
+
+existing_implementation:
+  # Good foundation that should be preserved and enhanced
+
+  strengths:
+    - 'Request tracing middleware already exists: backend/src/api/middleware/request-trace.ts'
+    - 'Pino logger configured: backend/src/utils/logger.ts (needs enhancement)'
+    - 'Decisions API with basic filters: backend/src/api/routes/decisions.ts (needs extension)'
+    - 'Database schema has all necessary fields: signalsJson, mode, safetyFlags, temporal context'
+    - 'Some decision logging exists in queue-processor.ts'
+
+  gaps:
+    - 'Logger missing: redaction config, service/version context, transport configuration'
+    - 'No comprehensive decision logging in decision-engine.ts (where decisions are created)'
+    - 'No safety logging (WARN level) in safety-protocol.ts'
+    - 'No GET /api/decisions/:id detail endpoint'
+    - 'No database indexes for filtered queries'
+    - 'No archiving implementation'
+    - 'No request ID propagation to external services (Twitter, Reddit, DeepSeek)'
+
+metadata:
+  review_type: 'Comprehensive Architectural Review'
+  review_duration_hours: 3
+  files_analyzed: 15
+  architect_instructions_created: true
+  blocking_decision: true
+  estimated_architecture_effort_hours: 2-3
+  estimated_story_refinement_effort_hours: 1-2

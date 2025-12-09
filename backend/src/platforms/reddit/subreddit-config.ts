@@ -45,9 +45,7 @@ const APPROVED_SUBREDDITS: Record<string, SubredditConfig> = {
     reviewedBy: 'pending',
     reviewedAt: new Date('1970-01-01'),
     allowComments: false,
-    customRules: [
-      'Awaiting moderation guidance. Do not engage until approval complete.',
-    ],
+    customRules: ['Awaiting moderation guidance. Do not engage until approval complete.'],
   },
 };
 
@@ -62,36 +60,33 @@ export function isSubredditApproved(subreddit: string): boolean {
     return false;
   }
 
-  const configDescriptor = Object.getOwnPropertyDescriptor(
-    APPROVED_SUBREDDITS,
-    normalized
-  );
+  const configDescriptor = Object.getOwnPropertyDescriptor(APPROVED_SUBREDDITS, normalized);
   const config = configDescriptor?.value as SubredditConfig | undefined;
 
   if (!config) {
     return false;
   }
 
-    if (!config.enabled || !config.rulesReviewed) {
-      logger.warn(
-        {
-          config,
-        },
-        `Subreddit not approved: ${subreddit}`
-      );
-      return false;
-    }
+  if (!config.enabled || !config.rulesReviewed) {
+    logger.warn(
+      {
+        config,
+      },
+      `Subreddit not approved: ${subreddit}`
+    );
+    return false;
+  }
 
-    if (config.bannedUntil && new Date() < config.bannedUntil) {
-      logger.warn(
-        {
-          subreddit,
-          bannedUntil: config.bannedUntil,
-        },
-        'Subreddit temporarily banned – skipping interaction'
-      );
-      return false;
-    }
+  if (config.bannedUntil && new Date() < config.bannedUntil) {
+    logger.warn(
+      {
+        subreddit,
+        bannedUntil: config.bannedUntil,
+      },
+      'Subreddit temporarily banned – skipping interaction'
+    );
+    return false;
+  }
 
   return true;
 }
@@ -107,10 +102,7 @@ export function validateSubreddits(subreddits: string[]): string[] {
     if (isSubredditApproved(subreddit)) {
       approved.push(subreddit);
     } else {
-      logger.error(
-        { subreddit },
-        'BLOCKED: Attempt to operate in unapproved subreddit'
-      );
+      logger.error({ subreddit }, 'BLOCKED: Attempt to operate in unapproved subreddit');
     }
   }
 

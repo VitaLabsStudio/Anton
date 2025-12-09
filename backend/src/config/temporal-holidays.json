@@ -1,0 +1,135 @@
+{
+  "version": "1.0",
+  "holidays": [
+    {
+      "id": "new_years_day",
+      "name": "New Year's Day",
+      "recurrence": "FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=1",
+      "category": "major_drinking",
+      "region": "US",
+      "monitoringBoost": 5.0,
+      "prePreventionDays": 2,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "new_years_eve",
+      "name": "New Year's Eve",
+      "recurrence": "FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=31",
+      "category": "major_drinking",
+      "region": "US",
+      "monitoringBoost": 5.0,
+      "prePreventionDays": 1,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "st_patricks",
+      "name": "St. Patrick's Day",
+      "recurrence": "FREQ=YEARLY;BYMONTH=3;BYMONTHDAY=17",
+      "category": "major_drinking",
+      "region": ["US", "UK", "IE"],
+      "monitoringBoost": 5.0,
+      "prePreventionDays": 1,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "independence_day",
+      "name": "Independence Day (US)",
+      "recurrence": "FREQ=YEARLY;BYMONTH=7;BYMONTHDAY=4",
+      "category": "major_drinking",
+      "region": "US",
+      "monitoringBoost": 4.0,
+      "prePreventionDays": 1,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "halloween",
+      "name": "Halloween",
+      "recurrence": "FREQ=YEARLY;BYMONTH=10;BYMONTHDAY=31",
+      "category": "major_drinking",
+      "region": "US",
+      "monitoringBoost": 3.0,
+      "prePreventionDays": 1,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "thanksgiving",
+      "name": "Thanksgiving (US)",
+      "recurrence": "FREQ=YEARLY;BYMONTH=11;BYDAY=TH;BYSETPOS=-1",
+      "category": "major_drinking",
+      "region": "US",
+      "monitoringBoost": 4.0,
+      "prePreventionDays": 2,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "thanksgiving_eve",
+      "name": "Thanksgiving Eve",
+      "recurrence": "FREQ=YEARLY;BYMONTH=11;BYDAY=WE;BYSETPOS=-1",
+      "category": "major_drinking",
+      "region": "US",
+      "monitoringBoost": 4.5,
+      "prePreventionDays": 1,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "boxing_day_uk",
+      "name": "Boxing Day (UK)",
+      "recurrence": "FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=26",
+      "category": "major_drinking",
+      "region": "UK",
+      "monitoringBoost": 3.0,
+      "prePreventionDays": 1,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "new_years_day_uk",
+      "name": "New Year's Day (UK)",
+      "recurrence": "FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=1",
+      "category": "major_drinking",
+      "region": "UK",
+      "monitoringBoost": 4.0,
+      "prePreventionDays": 2,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "canada_day",
+      "name": "Canada Day",
+      "recurrence": "FREQ=YEARLY;BYMONTH=7;BYMONTHDAY=1",
+      "category": "major_drinking",
+      "region": "CA",
+      "monitoringBoost": 4.0,
+      "prePreventionDays": 1,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "victoria_day",
+      "name": "Victoria Day (CA)",
+      "recurrence": "FREQ=YEARLY;BYMONTH=5;BYDAY=MO;BYSETPOS=-2",
+      "category": "major_drinking",
+      "region": "CA",
+      "monitoringBoost": 3.5,
+      "prePreventionDays": 1,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "australia_day",
+      "name": "Australia Day",
+      "recurrence": "FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=26",
+      "category": "major_drinking",
+      "region": "AU",
+      "monitoringBoost": 4.0,
+      "prePreventionDays": 1,
+      "postRecoveryDays": 1
+    },
+    {
+      "id": "anzac_day",
+      "name": "ANZAC Day",
+      "recurrence": "FREQ=YEARLY;BYMONTH=4;BYMONTHDAY=25",
+      "category": "major_drinking",
+      "region": "AU",
+      "monitoringBoost": 3.5,
+      "prePreventionDays": 1,
+      "postRecoveryDays": 1
+    }
+  ]
+}

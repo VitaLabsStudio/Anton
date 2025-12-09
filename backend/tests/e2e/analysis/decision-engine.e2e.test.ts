@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Author, Post } from '@prisma/client';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/utils/prisma.js', () => ({
   prisma: {
@@ -25,7 +25,10 @@ const trsSignal = { score: 0.85, confidence: 0.9, context: 'actual_hangover' };
 const safetySignal = { shouldDisengage: false, flags: [] };
 const powerUserSignal = { isPowerUser: true, confidence: 0.95 };
 const competitorSignal = { detected: true, name: 'Acme', confidence: 0.8 };
-const temporalSignal = { context: { multiplier: 1, dayOfWeek: 1, hour: 9, reason: 'peak' }, timestamp: new Date() };
+const temporalSignal = {
+  context: { multiplier: 1, dayOfWeek: 1, hour: 9, reason: 'peak' },
+  timestamp: new Date(),
+};
 
 vi.mock('../../../src/analysis/signal-1-linguistic.js', () => ({
   analyzeLinguisticIntent: vi.fn(() => Promise.resolve(sssSignal)),
@@ -41,6 +44,12 @@ vi.mock('../../../src/analysis/signal-4-semantic.js', () => ({
 }));
 vi.mock('../../../src/analysis/safety-protocol.js', () => ({
   checkSafetyProtocol: vi.fn(() => Promise.resolve(safetySignal)),
+  SafetySeverity: {
+    CRITICAL: 'CRITICAL',
+    HIGH: 'HIGH',
+    MEDIUM: 'MEDIUM',
+    LOW: 'LOW',
+  },
 }));
 vi.mock('../../../src/analysis/power-user-detector.js', () => ({
   detectPowerUser: vi.fn(() => Promise.resolve(powerUserSignal)),
@@ -140,7 +149,9 @@ describe('DecisionEngine E2E orchestration', () => {
       decision: { create: vi.fn() },
       post: { update: vi.fn() },
       archetype: { findUnique: vi.fn(async () => ({ id: 'arch-e2e', name: 'general' })) },
-      $transaction: vi.fn(async (callback: (tx: typeof prisma) => Promise<void>) => callback(prisma)),
+      $transaction: vi.fn(async (callback: (tx: typeof prisma) => Promise<void>) =>
+        callback(prisma)
+      ),
     };
 
     const engine = new DecisionEngine({
@@ -153,7 +164,9 @@ describe('DecisionEngine E2E orchestration', () => {
     expect(result.segmentUsed).toContain('_');
     expect(result.competitorDetected).toBe('Acme');
     expect(prisma.decision.create).toHaveBeenCalled();
-    expect(prisma.post.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ processedAt: expect.any(Date) }) }));
+    expect(prisma.post.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ processedAt: expect.any(Date) }) })
+    );
   });
 
   it('disengages when safety protocol flags content', async () => {
@@ -187,7 +200,9 @@ describe('DecisionEngine E2E orchestration', () => {
     const decision = await engine.analyzePost(buildPost(), buildAuthor());
 
     expect(decision.mode).toBe('HELPFUL');
-    expect(decision.modeProbabilities.HELPFUL).toBeGreaterThan(decision.modeProbabilities.ENGAGEMENT);
+    expect(decision.modeProbabilities.HELPFUL).toBeGreaterThan(
+      decision.modeProbabilities.ENGAGEMENT
+    );
   });
 
   it('flags low-confidence decisions for review', async () => {
@@ -211,7 +226,9 @@ describe('DecisionEngine E2E orchestration', () => {
       decision: { create: vi.fn() },
       post: { update: vi.fn() },
       archetype: { findUnique: vi.fn(async () => ({ id: 'arch-e2e', name: 'general' })) },
-      $transaction: vi.fn(async (callback: (tx: typeof prisma) => Promise<void>) => callback(prisma)),
+      $transaction: vi.fn(async (callback: (tx: typeof prisma) => Promise<void>) =>
+        callback(prisma)
+      ),
     };
 
     const engine = new DecisionEngine({
@@ -222,7 +239,10 @@ describe('DecisionEngine E2E orchestration', () => {
     const author = buildAuthor();
     await engine.analyzePost(buildPost(), author); // warm cache
 
-    const posts = Array.from({ length: 4 }, (_, idx) => ({ ...buildPost(), id: `post-concurrent-${idx}` }));
+    const posts = Array.from({ length: 4 }, (_, idx) => ({
+      ...buildPost(),
+      id: `post-concurrent-${idx}`,
+    }));
     await Promise.all(posts.map((post) => engine.analyzePost(post, author)));
 
     const snapshot = engine.getHealthSnapshot();

@@ -16,6 +16,7 @@
  */
 
 import { Hono } from 'hono';
+
 import { HealthCheckService } from '../../services/health-check.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { ipWhitelistMiddleware } from '../middleware/ip-whitelist.js';

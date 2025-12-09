@@ -1,11 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import {
-  withRetry,
-  isTransientError,
-  calculateDelay,
-  RetryContext,
-} from '../src/utils/retry';
+import type { RetryContext } from '../src/utils/retry';
+import { withRetry, isTransientError, calculateDelay } from '../src/utils/retry';
 
 // Mock logger
 vi.mock('../src/utils/logger', () => ({

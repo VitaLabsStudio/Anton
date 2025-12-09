@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Author } from '@prisma/client';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SafetyProtocol, SafetySeverity } from '../../../src/analysis/safety-protocol.js';
 import { logger } from '../../../src/utils/logger.js';
@@ -33,7 +33,11 @@ class StubLlmClient {
     this.shouldThrow = shouldThrow;
   }
 
-  async generate(): Promise<{ content: string; confidence: number; usage: Record<string, number> }> {
+  async generate(): Promise<{
+    content: string;
+    confidence: number;
+    usage: Record<string, number>;
+  }> {
     if (this.shouldThrow) {
       throw new Error('LLM failure');
     }
@@ -85,7 +89,10 @@ describe('SafetyProtocol integration', () => {
       metrics,
     });
 
-    const result = await protocol.checkSafetyProtocol("I'm dying from this hangover", buildAuthor());
+    const result = await protocol.checkSafetyProtocol(
+      "I'm dying from this hangover",
+      buildAuthor()
+    );
 
     expect(result.shouldDisengage).toBe(true);
     expect(result.llmAssessment?.model).toBe('fallback');
@@ -93,7 +100,7 @@ describe('SafetyProtocol integration', () => {
     expect(result.distressProbability).toBeGreaterThan(0);
 
     const assessmentMetric = metrics.increments.find(
-      (entry) => entry.name === 'safety.llm_assessment_total',
+      (entry) => entry.name === 'safety.llm_assessment_total'
     );
     expect(assessmentMetric?.tags?.model).toBe('fallback');
   });
@@ -109,7 +116,9 @@ describe('SafetyProtocol integration', () => {
     await protocol.checkSafetyProtocol('calling 911 for my friend after overdose', buildAuthor());
 
     expect(infoSpy).toHaveBeenCalled();
-    const payload = infoSpy.mock.calls[0]?.[0] as { safetyAudit?: { flags: string[]; content: string } };
+    const payload = infoSpy.mock.calls[0]?.[0] as {
+      safetyAudit?: { flags: string[]; content: string };
+    };
     expect(payload?.safetyAudit?.flags?.[0]).toBe('MEDICAL_EMERGENCY');
     expect(payload?.safetyAudit?.content.length).toBeLessThanOrEqual(200);
     infoSpy.mockRestore();

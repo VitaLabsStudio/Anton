@@ -18,10 +18,14 @@ export interface ClientStatus {
   message: string;
 }
 
+export interface RequestOptions {
+  requestId?: string;
+}
+
 export interface IPlatformClient {
   verifyCredentials(): Promise<ClientStatus>;
-  search(query: string): Promise<Post[]>;
-  reply(postId: string, content: string): Promise<{ replyId: string }>;
+  search(query: string, options?: RequestOptions): Promise<Post[]>;
+  reply(postId: string, content: string, options?: RequestOptions): Promise<{ replyId: string }>;
 }
 
 /**

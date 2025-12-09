@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 
-import { logger } from '../../utils/logger.js';
 import { ThreadsClient } from '../../platforms/threads/client.js';
+import { logger } from '../../utils/logger.js';
 
 const threadsRouter = new Hono();
 const threadsClient = new ThreadsClient();

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     // Target & Module System
-    "target": "ES2024",
+    "target": "ESNext",
     "lib": ["ES2024"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -45,7 +45,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": ["./shared/src/*"]
+      "@shared/*": ["./shared/src/*"],
+      "@scripts/*": ["./scripts/*"]
     }
   },
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]

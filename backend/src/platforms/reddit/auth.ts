@@ -21,8 +21,7 @@ export function validateRedditCredentials(): RedditCredentials {
     clientId: process.env['REDDIT_CLIENT_ID'],
     clientSecret: process.env['REDDIT_CLIENT_SECRET'],
     refreshToken: process.env['REDDIT_REFRESH_TOKEN'],
-    userAgent:
-      process.env['REDDIT_USER_AGENT'] ?? 'Antone/1.0.0 (by /u/antone_vita)',
+    userAgent: process.env['REDDIT_USER_AGENT'] ?? 'Antone/1.0.0 (by /u/antone_vita)',
   };
 
   const missing = Object.entries(credentials)
@@ -34,9 +33,7 @@ export function validateRedditCredentials(): RedditCredentials {
   }
 
   if (!credentials.refreshToken!.startsWith('refresh_token=')) {
-    logger.warn(
-      'REDDIT_REFRESH_TOKEN may have incorrect format (expected refresh_token=...)'
-    );
+    logger.warn('REDDIT_REFRESH_TOKEN may have incorrect format (expected refresh_token=...)');
   }
 
   logger.info(

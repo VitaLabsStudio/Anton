@@ -3,31 +3,38 @@
 # See: docs/adr/006-mode-selection-thresholds.md
 
 thresholds:
-  sssHelpful: 0.82
+  sssHelpful:
+    0.82
     # Rationale: 82nd percentile of successful helpful engagements
     # Data source: Analysis of 10,000+ historical decisions
     # Trade-off: Higher threshold reduces false positives but may miss opportunities
 
-  sssModerate: 0.55
+  sssModerate:
+    0.55
     # Rationale: Median SSS score, separates high/low intent
     # Configurable for A/B testing
 
-  evsHighViral: 5.0
+  evsHighViral:
+    5.0
     # Rationale: 5× baseline = statistically significant viral event
     # Based on EVS distribution analysis
 
-  evsModerateViral: 2.0
+  evsModerateViral:
+    2.0
     # Rationale: 2× baseline = moderate engagement spike
 
-  arsStrong: 0.70
+  arsStrong:
+    0.70
     # Rationale: 70th percentile of relationship scores
     # Indicates strong prior positive interactions
 
-  minSampleSize: 100
+  minSampleSize:
+    100
     # Rationale: Power analysis for 10% effect size, 80% power, α=0.05
     # Used for Bayesian shrinkage, not hard cutoff
     # See: docs/adr/007-bayesian-shrinkage.md
 
-  confidenceThreshold: 0.70
+  confidenceThreshold:
+    0.70
     # Rationale: 70% confidence threshold for flagging human review
     # Conservative: prefer human review over risky auto-decisions

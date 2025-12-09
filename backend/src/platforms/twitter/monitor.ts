@@ -3,9 +3,10 @@
  * Optimized for PERF-001 - pushes filtering to platform API where possible.
  */
 
-import { TwitterClient } from './client.js';
 import { logger } from '../../utils/logger.js';
 import type { DetectedPost } from '../../workers/types.js';
+
+import { TwitterClient } from './client.js';
 
 export class TwitterMonitor {
   private client: TwitterClient;

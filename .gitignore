@@ -57,3 +57,8 @@ docker-compose.override.yml
 # Misc
 *.local
 .turbo
+
+# Prevent duplicate numbered files
+* 2.*
+* 3.*
+* 4.*

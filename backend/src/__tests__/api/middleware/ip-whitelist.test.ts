@@ -9,8 +9,9 @@
  * - Rejection of non-whitelisted IPs
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Hono } from 'hono';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { ipWhitelistMiddleware } from '../../../api/middleware/ip-whitelist.js';
 
 describe('IP Whitelist Middleware', () => {

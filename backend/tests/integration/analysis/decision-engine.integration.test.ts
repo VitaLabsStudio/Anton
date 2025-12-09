@@ -10,10 +10,7 @@ vi.mock('../../../src/utils/prisma.js', () => ({
   },
 }));
 
-import {
-  DecisionEngine,
-  DEFAULT_THRESHOLDS,
-} from '../../../src/analysis/decision-engine.js';
+import { DecisionEngine, DEFAULT_THRESHOLDS } from '../../../src/analysis/decision-engine.js';
 
 const baseThresholds = { ...DEFAULT_THRESHOLDS, minSampleSize: 50 };
 

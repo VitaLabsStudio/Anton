@@ -2,13 +2,17 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 
+import { requestTrace } from './api/middleware/request-trace.js';
+import { decisionsRouter } from './api/routes/decisions.js';
+import { healthRouter } from './api/routes/health.js';
+import { metricsRouter } from './api/routes/metrics.js';
+import { adminTemporalRouter } from './api/routes/admin-temporal.js';
 import { redditRouter } from './api/routes/reddit.js';
 import { threadsRouter } from './api/routes/threads.js';
 import { twitterRouter } from './api/routes/twitter.js';
-import { healthRouter } from './api/routes/health.js';
-import { decisionsRouter } from './api/routes/decisions.js';
-import { metricsRouter } from './api/routes/metrics.js';
-import { requestTrace } from './api/middleware/request-trace.js';
+import { mlRouter } from './api/routes/ml.js';
+import { analyticsTemporalRouter } from './api/routes/analytics-temporal.js';
+import { startTemporalConfigWatcher } from './services/temporal-config-watcher.js';
 
 const app = new Hono();
 
@@ -22,9 +26,15 @@ app.get('/', (c) => {
 app.route('/api/twitter', twitterRouter);
 app.route('/api/reddit', redditRouter);
 app.route('/api/threads', threadsRouter);
+app.route('/api/admin/temporal', adminTemporalRouter);
+app.route('/api/ml', mlRouter);
+app.route('/api/analytics/temporal', analyticsTemporalRouter);
 app.route('/health', healthRouter);
 app.route('/metrics', metricsRouter);
 app.route('/api/decisions', decisionsRouter);
+
+// Start config watcher if enabled
+startTemporalConfigWatcher();
 
 const port = Number(process.env['PORT']) || 3001;
 const hostname = '0.0.0.0'; // OPS-001: Required for Docker health checks

@@ -42,45 +42,30 @@ export class KeywordMatcher {
     this.config = config ?? (keywordsConfig as KeywordConfig);
 
     // Flatten all terms from all categories
-    const allTerms = Object.values(this.config.categories).flatMap(
-      (cat) => cat.terms
-    );
+    const allTerms = Object.values(this.config.categories).flatMap((cat) => cat.terms);
 
     // Escape special regex characters in terms
-    const escapedTerms = allTerms.map((term) =>
-      term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    );
+    const escapedTerms = allTerms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
     // Pre-compile single master regex for O(1) detection
     // Use word boundaries for whole-word matching, case-insensitive
-    this.keywordRegex = new RegExp(
-      `\\b(${escapedTerms.join('|')})\\b`,
-      'i'
-    );
+    this.keywordRegex = new RegExp(`\\b(${escapedTerms.join('|')})\\b`, 'i');
 
     // Pre-compile exclusion patterns
     const escapedExclusions = this.config.exclusions.spam_patterns.map((term) =>
       term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     );
-    this.exclusionRegex = new RegExp(
-      `\\b(${escapedExclusions.join('|')})\\b`,
-      'i'
-    );
+    this.exclusionRegex = new RegExp(`\\b(${escapedExclusions.join('|')})\\b`, 'i');
 
     // Pre-compile medical disclaimer patterns
-    const escapedMedical = this.config.exclusions.medical_disclaimers_required.map(
-      (term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const escapedMedical = this.config.exclusions.medical_disclaimers_required.map((term) =>
+      term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     );
-    this.medicalDisclaimerRegex = new RegExp(
-      `\\b(${escapedMedical.join('|')})\\b`,
-      'i'
-    );
+    this.medicalDisclaimerRegex = new RegExp(`\\b(${escapedMedical.join('|')})\\b`, 'i');
 
     // Pre-compile per-category regexes for detailed category detection
     this.categoryPatterns = new Map();
-    for (const [categoryName, category] of Object.entries(
-      this.config.categories
-    )) {
+    for (const [categoryName, category] of Object.entries(this.config.categories)) {
       const escapedCategoryTerms = category.terms.map((term) =>
         term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       );

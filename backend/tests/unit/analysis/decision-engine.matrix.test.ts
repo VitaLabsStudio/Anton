@@ -38,7 +38,7 @@ const combos = (() => {
   return out;
 })();
 
-function buildSignals({ sss, ars, evs, trs, safety, powerUser }: typeof combos[number]) {
+function buildSignals({ sss, ars, evs, trs, safety, powerUser }: (typeof combos)[number]) {
   return {
     sss: { score: sss, confidence: 0.8, category: 'moderate' },
     ars: { score: ars, confidence: 0.8, archetypes: [], interactionCount: 0 },
@@ -54,7 +54,10 @@ function buildSignals({ sss, ars, evs, trs, safety, powerUser }: typeof combos[n
     safety: { shouldDisengage: safety, flags: [] },
     powerUser: { isPowerUser: powerUser, confidence: 0.9 },
     competitor: { detected: false, name: null, confidence: 0 },
-    temporal: { context: { multiplier: 1, dayOfWeek: 0, hour: 0, reason: 'test' }, timestamp: new Date() },
+    temporal: {
+      context: { multiplier: 1, dayOfWeek: 0, hour: 0, reason: 'test' },
+      timestamp: new Date(),
+    },
   };
 }
 

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { SemanticTopicAnalyzer } from '../../../src/analysis/signal-4-semantic';
 
 const mocks = vi.hoisted(() => ({
@@ -152,7 +153,9 @@ describe('SemanticTopicAnalyzer', () => {
       usage: { completion_tokens: 5, prompt_tokens: 8, total_tokens: 13 },
     });
 
-    const result = await analyzer.analyzeSemanticTopic('I have that meeting nausea after the retreat');
+    const result = await analyzer.analyzeSemanticTopic(
+      'I have that meeting nausea after the retreat'
+    );
 
     expect(result.context).toBe('ambiguous');
     expect(mocks.logger.warn).toHaveBeenCalledWith(

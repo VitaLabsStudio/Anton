@@ -13,13 +13,12 @@
  * - Pipeline: Data integrity check (TECH-002)
  */
 
-import NodeCache from 'node-cache';
-import { prisma } from '../utils/prisma.js';
-import { logger } from '../utils/logger.js';
-import { TwitterClient } from '../platforms/twitter/client.js';
+import { decisionEngine } from '../analysis/decision-engine.js';
 import { RedditClient } from '../platforms/reddit/client.js';
 import { ThreadsClient } from '../platforms/threads/client.js';
-import { decisionEngine } from '../analysis/decision-engine.js';
+import { TwitterClient } from '../platforms/twitter/client.js';
+import { logger } from '../utils/logger.js';
+import { prisma } from '../utils/prisma.js';
 
 export interface ComponentStatus {
   healthy: boolean;
@@ -198,15 +197,16 @@ export class HealthCheckService {
     logger.debug('HealthCheckService: Running health checks');
 
     // Run all checks in parallel for efficiency
-    const [database, twitter, reddit, threads, worker, pipeline] = await Promise.all([
-      this.checkDatabase(),
-      this.checkTwitter(),
-      this.checkReddit(),
-      this.checkThreads(),
-      this.checkWorker(),
-      this.checkPipeline(),
-      this.checkDecisionEngine(),
-    ]);
+    const [database, twitter, reddit, threads, worker, pipeline, decisionEngine] =
+      await Promise.all([
+        this.checkDatabase(),
+        this.checkTwitter(),
+        this.checkReddit(),
+        this.checkThreads(),
+        this.checkWorker(),
+        this.checkPipeline(),
+        this.checkDecisionEngine(),
+      ]);
 
     // Determine overall status
     const components = { database, twitter, reddit, threads, worker, pipeline, decisionEngine };
@@ -518,11 +518,6 @@ export class HealthCheckService {
         healthy: !unhealthyBreaker,
         latency,
         message: unhealthyBreaker ? 'Decision engine has open breakers' : 'Decision engine healthy',
-        metadata: {
-          cache: snapshot.cache,
-          breakers: snapshot.breakers,
-          latency: snapshot.latency,
-        },
         lastCheck: new Date(),
       };
     } catch (error) {

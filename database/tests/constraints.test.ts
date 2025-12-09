@@ -36,8 +36,7 @@ const resetStore = () => {
 };
 
 const buildAuthorKey = (platform: string, platformId: string) => `${platform}::${platformId}`;
-const buildPostKey = (platform: string, platformPostId: string) =>
-  `${platform}::${platformPostId}`;
+const buildPostKey = (platform: string, platformPostId: string) => `${platform}::${platformPostId}`;
 
 const createId = (prefix: string) => `${prefix}-${idSequence++}`;
 

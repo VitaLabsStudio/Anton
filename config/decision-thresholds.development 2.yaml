@@ -1,7 +1,0 @@
-# Environment-specific reward tuning for the dev workspace
-thresholds:
-  confidenceThreshold: 0.65  # allow more experimentation
-  minSampleSize: 50           # lower bar for feature/key testing
-  reviewConfidenceDelta: 0.2
-  nearThresholdTolerance: 0.08
-  trsGate: 0.45

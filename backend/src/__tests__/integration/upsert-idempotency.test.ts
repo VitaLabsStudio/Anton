@@ -7,8 +7,8 @@
  * - Worker restart safety
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PrismaClient, Platform } from '@prisma/client';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 const prisma = new PrismaClient();
 

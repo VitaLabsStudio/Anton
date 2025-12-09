@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
+
 import { SpamFilter } from '../../workers/spam-filter.js';
 import type { AuthorMetadata } from '../../workers/spam-filter.js';
 

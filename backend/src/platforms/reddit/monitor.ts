@@ -3,10 +3,11 @@
  * Uses approved subreddit configs for safe operation.
  */
 
-import { RedditClient } from './client.js';
-import { getApprovedSubredditConfigs } from './subreddit-config.js';
 import { logger } from '../../utils/logger.js';
 import type { DetectedPost } from '../../workers/types.js';
+
+import { RedditClient } from './client.js';
+import { getApprovedSubredditConfigs } from './subreddit-config.js';
 
 export class RedditMonitor {
   private client: RedditClient;
@@ -43,25 +44,18 @@ export class RedditMonitor {
         'Reddit monitor: Starting scan'
       );
 
-      const submissions = await this.client.searchSubreddits(
-        subredditNames,
-        query
-      );
+      const submissions = await this.client.searchSubreddits(subredditNames, query);
 
       // Filter out already processed posts
-      const newSubmissions = submissions.filter(
-        (sub) => !this.processedIds.has(sub.id)
-      );
+      const newSubmissions = submissions.filter((sub) => !this.processedIds.has(sub.id));
 
       const detected: DetectedPost[] = newSubmissions.map((sub) => {
-        const authorObj =
-          typeof sub.author === 'string' ? undefined : sub.author;
+        const authorObj = typeof sub.author === 'string' ? undefined : sub.author;
 
         const authorName =
           authorObj?.name ?? (typeof sub.author === 'string' ? sub.author : '') ?? 'unknown';
 
-        const authorId =
-          sub.author_fullname ?? authorObj?.id ?? sub.id;
+        const authorId = sub.author_fullname ?? authorObj?.id ?? sub.id;
 
         const contentParts = [sub.title, sub.selftext?.trim()].filter(Boolean);
         const content = contentParts.join('\n').trim() || sub.title;
@@ -84,9 +78,7 @@ export class RedditMonitor {
       // Limit memory usage by pruning old IDs
       if (this.processedIds.size > this.MAX_PROCESSED_IDS) {
         const idsArray = Array.from(this.processedIds);
-        this.processedIds = new Set(
-          idsArray.slice(idsArray.length - this.MAX_PROCESSED_IDS / 2)
-        );
+        this.processedIds = new Set(idsArray.slice(idsArray.length - this.MAX_PROCESSED_IDS / 2));
       }
 
       logger.info(

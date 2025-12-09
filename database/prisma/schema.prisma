@@ -161,8 +161,9 @@ model Post {
 
 /// Decision made by the analysis engine for a post
 model Decision {
-  id                     String                 @id @default(uuid())
+  id                     String                 @default(uuid())
   postId                 String                 @map("post_id")
+  platform               Platform
   sssScore               Float                  @map("sss_score")
   arsScore               Float                  @map("ars_score")
   evsScore               Float                  @map("evs_score")
@@ -195,6 +196,7 @@ model Decision {
   randomizedExperiments  RandomizedExperiment[]
   replies                Reply[]
 
+  @@id([id, createdAt])
   @@index([createdAt])
   @@index([createdAt, compositeScore, mode, needsReview], map: "idx_decisions_composite_mode_needs_review")
   @@index([experimentVariant])
@@ -202,6 +204,8 @@ model Decision {
   @@index([mode])
   @@index([postId], map: "idx_decisions_post_id")
   @@index([compositeScore])
+  @@index([platform, mode, createdAt(sort: Desc)], map: "idx_decisions_platform_mode_created")
+  @@index([sssScore, mode], map: "idx_decisions_sss_mode")
   @@map("decisions")
 }
 
@@ -209,6 +213,7 @@ model Decision {
 model Reply {
   id             String         @id @default(uuid())
   decisionId     String         @map("decision_id")
+  decisionCreatedAt DateTime    @map("decision_created_at")
   content        String
   archetypeId    String?        @map("archetype_id")
   platform       Platform
@@ -227,13 +232,29 @@ model Reply {
   updatedAt      DateTime       @updatedAt @map("updated_at")
   escalations    Escalation[]
   archetype      Archetype?     @relation(fields: [archetypeId], references: [id], onDelete: SetNull)
-  decision       Decision       @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  decision       Decision       @relation(fields: [decisionId, decisionCreatedAt], references: [id, createdAt], onDelete: Cascade)
 
   @@index([postedAt])
   @@index([approvalStatus])
   @@index([platform, postedAt])
   @@index([platformPostId])
   @@map("replies")
+}
+
+model TemporalConfigHistory {
+  id           String   @id @default(uuid())
+  configType   String   @map("config_type")
+  action       String
+  configId     String   @map("config_id")
+  configBefore Json?    @map("config_before")
+  configAfter  Json?    @map("config_after")
+  changedBy    String?  @map("changed_by")
+  changedAt    DateTime @default(now()) @map("changed_at")
+  reason       String?
+
+  @@index([configType, configId], map: "idx_temporal_config_history_type_id")
+  @@index([changedAt], map: "idx_temporal_config_history_changed_at")
+  @@map("temporal_config_history")
 }
 
 /// Competitor brand tracked for mentions
@@ -354,12 +375,13 @@ model LearningEvent {
 model RandomizedExperiment {
   id               String          @id @default(uuid())
   decisionId       String          @map("decision_id")
+  decisionCreatedAt DateTime       @map("decision_created_at")
   predictedMode    OperationalMode @map("predicted_mode")
   actualMode       OperationalMode @map("actual_mode")
   predictedOutcome Float           @map("predicted_outcome")
   actualOutcome    Float?          @map("actual_outcome")
   createdAt        DateTime        @default(now()) @map("created_at")
-  decision         Decision        @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  decision         Decision        @relation(fields: [decisionId, decisionCreatedAt], references: [id, createdAt], onDelete: Cascade)
 
   @@index([predictedMode])
   @@index([actualMode])
@@ -407,6 +429,7 @@ model Escalation {
   id              String             @id @default(uuid())
   postId          String?            @map("post_id")
   decisionId      String?            @map("decision_id")
+  decisionCreatedAt DateTime?      @map("decision_created_at")
   replyId         String?            @map("reply_id")
   reasonId        String?            @map("reason_id")
   reasonText      String?            @map("reason_text")
@@ -417,7 +440,7 @@ model Escalation {
   resolutionNotes String?            @map("resolution_notes")
   createdAt       DateTime           @default(now()) @map("created_at")
   resolvedAt      DateTime?          @map("resolved_at")
-  decision        Decision?          @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  decision        Decision?          @relation(fields: [decisionId, decisionCreatedAt], references: [id, createdAt], onDelete: Cascade)
   post            Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
   reason          EscalationReason?  @relation(fields: [reasonId], references: [id], onDelete: SetNull)
   reply           Reply?             @relation(fields: [replyId], references: [id], onDelete: Cascade)

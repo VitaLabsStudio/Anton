@@ -9,14 +9,12 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { KarmaGate } from '../../../workers/guards/karma-gate.js';
+
 import type { RedditClient } from '../../../platforms/reddit/client.js';
+import { KarmaGate } from '../../../workers/guards/karma-gate.js';
 
 describe('KarmaGate', () => {
-  const createMockClient = (
-    karma: number,
-    createdUtc?: number
-  ): RedditClient => {
+  const createMockClient = (karma: number, createdUtc?: number): RedditClient => {
     const mockClient = {
       getKarma: vi.fn().mockResolvedValue(karma),
       getLastVerifiedInfo: vi.fn().mockReturnValue({

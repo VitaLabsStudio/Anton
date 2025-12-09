@@ -1,8 +1,8 @@
 import type { Author, Platform, Post, Prisma } from '@prisma/client';
 
-import { detectOutliers, winsorizedMean } from '../utils/robust-statistics';
-import { logger } from '../utils/logger';
-import { prisma } from '../utils/prisma';
+import { logger } from '../utils/logger.js';
+import { prisma } from '../utils/prisma.js';
+import { detectOutliers, winsorizedMean } from '../utils/robust-statistics.js';
 
 export type VelocityCategory = 'silent_plea' | 'normal' | 'moderate' | 'viral';
 
@@ -37,8 +37,8 @@ const DEFAULT_RATIO = 1.0;
 
 // Simple, bounded temporal weighting to normalize off-peak posting hours/weekends.
 const TIME_OF_DAY_FACTORS: number[] = [
-  0.65, 0.65, 0.7, 0.72, 0.75, 0.8, 0.88, 0.95, 1.0, 1.05, 1.08, 1.08,
-  1.05, 1.05, 1.05, 1.08, 1.1, 1.1, 1.05, 0.98, 0.9, 0.82, 0.75, 0.7,
+  0.65, 0.65, 0.7, 0.72, 0.75, 0.8, 0.88, 0.95, 1.0, 1.05, 1.08, 1.08, 1.05, 1.05, 1.05, 1.08, 1.1,
+  1.1, 1.05, 0.98, 0.9, 0.82, 0.75, 0.7,
 ];
 
 // Sunday=0 through Saturday=6
@@ -50,9 +50,10 @@ export class PostVelocityAnalyzer {
       const { rate: currentRate, temporalContext } = this.calculateNormalizedEngagementRate(post);
       const baseline = await this.getAuthorBaseline(author.id, post.platform, post.platformPostId);
 
-      const ratio = baseline.hasBaseline && baseline.baselineRate > 0
-        ? currentRate / baseline.baselineRate
-        : DEFAULT_RATIO;
+      const ratio =
+        baseline.hasBaseline && baseline.baselineRate > 0
+          ? currentRate / baseline.baselineRate
+          : DEFAULT_RATIO;
 
       return {
         ratio: Number.isFinite(ratio) ? ratio : DEFAULT_RATIO,
@@ -63,7 +64,7 @@ export class PostVelocityAnalyzer {
         temporalContext,
       };
     } catch (error) {
-      logger.error('Post velocity analysis failed', { error, postId: post.id });
+      logger.error({ error, postId: post.id }, 'Post velocity analysis failed');
       return {
         ratio: DEFAULT_RATIO,
         category: 'normal',
@@ -98,8 +99,8 @@ export class PostVelocityAnalyzer {
     }
 
     const normalizedRates = recentPosts
-      .map((recentPost) => this.calculateNormalizedEngagementRate(recentPost).rate)
-      .filter((rate) => Number.isFinite(rate) && rate >= 0);
+      .map((recentPost: Post) => this.calculateNormalizedEngagementRate(recentPost).rate)
+      .filter((rate: number) => Number.isFinite(rate) && rate >= 0);
 
     if (normalizedRates.length === 0) {
       return { baselineRate: DEFAULT_RATIO, sampleSize: recentPosts.length, hasBaseline: false };
@@ -111,7 +112,11 @@ export class PostVelocityAnalyzer {
     const baselineRate = winsorizedMean(winsorInput, 0.1);
 
     if (!Number.isFinite(baselineRate) || baselineRate <= 0) {
-      return { baselineRate: DEFAULT_RATIO, sampleSize: normalizedRates.length, hasBaseline: false };
+      return {
+        baselineRate: DEFAULT_RATIO,
+        sampleSize: normalizedRates.length,
+        hasBaseline: false,
+      };
     }
 
     return {
@@ -121,7 +126,10 @@ export class PostVelocityAnalyzer {
     };
   }
 
-  private calculateNormalizedEngagementRate(post: Post): { rate: number; temporalContext: TemporalContext } {
+  private calculateNormalizedEngagementRate(post: Post): {
+    rate: number;
+    temporalContext: TemporalContext;
+  } {
     const temporalContext = this.getTemporalContext(post.detectedAt);
     const rawRate = this.calculateEngagementRate(post, temporalContext.hoursSincePost);
 
@@ -154,11 +162,11 @@ export class PostVelocityAnalyzer {
       typeof value === 'number' && Number.isFinite(value) ? value : 0;
 
     return {
-      likes: safeNumber(metrics.likes),
-      replies: safeNumber(metrics.replies ?? metrics.comments),
-      reposts: safeNumber(metrics.retweets ?? metrics.reposts),
-      upvotes: safeNumber(metrics.upvotes),
-      comments: safeNumber(metrics.comments),
+      likes: safeNumber(metrics['likes']),
+      replies: safeNumber(metrics['replies'] ?? metrics['comments']),
+      reposts: safeNumber(metrics['retweets'] ?? metrics['reposts']),
+      upvotes: safeNumber(metrics['upvotes']),
+      comments: safeNumber(metrics['comments']),
     };
   }
 

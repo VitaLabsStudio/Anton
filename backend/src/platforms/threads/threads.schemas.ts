@@ -10,7 +10,10 @@ const ZodThreadsAuthor = z.object({
 
 const ZodThreadsPost = z.object({
   id: z.string(),
-  text: z.string().nullable().transform((value) => value ?? ''),
+  text: z
+    .string()
+    .nullable()
+    .transform((value) => value ?? ''),
   author: ZodThreadsAuthor,
   created_at: z.string().optional(),
 });

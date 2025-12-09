@@ -15,7 +15,7 @@ export const redis = new Redis(REDIS_URL, {
       return null;
     }
     return Math.min(times * 100, 2000);
-  }
+  },
 });
 
 redis.on('error', (err: Error) => {

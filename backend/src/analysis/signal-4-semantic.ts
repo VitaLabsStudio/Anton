@@ -41,7 +41,8 @@ const METAPHOR_PATTERNS: RegExp[] = [
 
 const POP_CULTURE_TITLE_PATTERN =
   /(?:The|A|An)?\s*([A-Z][a-zA-Z0-9'’&:,-]+(?:\s+[A-Z][a-zA-Z0-9'’&:,-]+)+)\s+(?:movie|film|series|show|song|album|soundtrack)/i;
-const CAPITALIZED_TITLE_WITH_HANGOVER = /((?:[A-Z][a-zA-Z0-9'’&-]+)(?:\s+(?:[A-Z][a-zA-Z0-9'’&-]+))+)\s+hangover/i;
+const CAPITALIZED_TITLE_WITH_HANGOVER =
+  /((?:[A-Z][a-zA-Z0-9'’&-]+)(?:\s+(?:[A-Z][a-zA-Z0-9'’&-]+))+)\s+hangover/i;
 
 const ambiguityMetrics = {
   processed: 0,
@@ -177,7 +178,11 @@ export class SemanticTopicAnalyzer {
     return this.buildSignalFromParsed(parsed, confidence, content);
   }
 
-  private buildSignalFromParsed(parsed: ParsedResponse, confidence: number, content: string): SemanticTopicSignalResult {
+  private buildSignalFromParsed(
+    parsed: ParsedResponse,
+    confidence: number,
+    content: string
+  ): SemanticTopicSignalResult {
     const baseScore = this.normalizeScore(parsed);
     const context = this.determineContext(baseScore, parsed.ambiguity);
 
@@ -206,9 +211,13 @@ export class SemanticTopicAnalyzer {
     return 0.0;
   }
 
-  private determineContext(score: number, ambiguity?: number): SemanticTopicSignalResult['context'] {
+  private determineContext(
+    score: number,
+    ambiguity?: number
+  ): SemanticTopicSignalResult['context'] {
     const isAmbiguous =
-      (ambiguity !== undefined && ambiguity >= 0.4 && ambiguity <= 0.6) || (score >= 0.4 && score <= 0.6);
+      (ambiguity !== undefined && ambiguity >= 0.4 && ambiguity <= 0.6) ||
+      (score >= 0.4 && score <= 0.6);
 
     if (isAmbiguous) {
       return 'ambiguous';

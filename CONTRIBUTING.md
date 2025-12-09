@@ -49,6 +49,7 @@ gitleaks detect --source . --config .gitleaks.toml -v
 To verify gitleaks is correctly detecting secrets:
 
 1. Create a test file with fake credentials:
+
 ```bash
 cat > /tmp/test-secrets.txt << 'EOF'
 TWITTER_API_KEY=abcdefghijklmnopqrstuvwxy
@@ -58,11 +59,13 @@ EOF
 ```
 
 2. Run gitleaks on the test file:
+
 ```bash
 gitleaks detect --source /tmp --config .gitleaks.toml -v
 ```
 
 3. Expected output should show detected secrets:
+
 ```
 Finding:     TWITTER_API_KEY=abcdefghijklmnopqrstuvwxy
 Secret:      abcdefghijklmnopqrstuvwxy
@@ -71,6 +74,7 @@ RuleID:      twitter-api-key
 ```
 
 4. Clean up the test file:
+
 ```bash
 rm /tmp/test-secrets.txt
 ```
@@ -96,6 +100,7 @@ test/fixtures/mock-credentials.ts
 ### Custom Rules
 
 Our `.gitleaks.toml` includes Twitter-specific rules:
+
 - `twitter-api-key` - Detects Twitter API keys
 - `twitter-access-token` - Detects Twitter access tokens
 - `twitter-bearer-token` - Detects Twitter bearer tokens

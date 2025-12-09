@@ -384,7 +384,7 @@ export class SafetyProtocol {
 
         if (llmAssessment.classification === 'HYPERBOLE') {
           this.metrics.increment('safety.false_positive_suspected', {
-            category: contextualChecks[0].category,
+            category: contextualChecks[0]?.category,
           });
         }
 

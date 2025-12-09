@@ -1,6 +1,11 @@
-import { vi } from 'vitest';
 import fc from 'fast-check';
-import { DecisionEngine, DEFAULT_THRESHOLDS, DEFAULT_WEIGHTS } from '../../../src/analysis/decision-engine.js';
+import { vi } from 'vitest';
+
+import {
+  DecisionEngine,
+  DEFAULT_THRESHOLDS,
+  DEFAULT_WEIGHTS,
+} from '../../../src/analysis/decision-engine.js';
 
 vi.mock('../../../src/utils/prisma.js', () => ({
   prisma: {
@@ -22,10 +27,15 @@ function createPrismaStub() {
     archetype: { findUnique: vi.fn(async () => ({ id: 'arch-1', name: 'general' })) },
     $transaction: undefined,
   };
-  (stub as any).$transaction = vi.fn(async (callback: (tx: typeof stub) => Promise<void>) => callback(stub));
+  (stub as any).$transaction = vi.fn(async (callback: (tx: typeof stub) => Promise<void>) =>
+    callback(stub)
+  );
   return stub;
 }
-const templateTemporal = { context: { multiplier: 1, dayOfWeek: 0, hour: 0, reason: 'test' }, timestamp: new Date() };
+const templateTemporal = {
+  context: { multiplier: 1, dayOfWeek: 0, hour: 0, reason: 'test' },
+  timestamp: new Date(),
+};
 
 function buildSignals(sss: number, ars: number, evs: number, trs: number) {
   return {
@@ -48,25 +58,46 @@ function buildSignals(sss: number, ars: number, evs: number, trs: number) {
 }
 
 describe('DecisionEngine property invariants', () => {
-  const engine = new DecisionEngine({ thresholds: baseThresholds, prismaClient: createPrismaStub() });
+  const engine = new DecisionEngine({
+    thresholds: baseThresholds,
+    prismaClient: createPrismaStub(),
+  });
 
   it('keeps composite score within [0,1]', () => {
     fc.assert(
-      fc.property(fc.float({ min: 0, max: 1 }), fc.float({ min: 0, max: 1 }), fc.float({ min: 0, max: 10 }), fc.float({ min: 0, max: 1 }), (sss, ars, evs, trs) => {
-        const weights = { ...DEFAULT_WEIGHTS, validationTimestamp: new Date() };
-        const score = engine.calculateComposite(buildSignals(sss, ars, evs, trs).sss, buildSignals(sss, ars, evs, trs).ars, buildSignals(sss, ars, evs, trs).evs, buildSignals(sss, ars, evs, trs).trs, weights);
-        return score >= 0 && score <= 1 && Number.isFinite(score);
-      })
+      fc.property(
+        fc.float({ min: 0, max: 1 }),
+        fc.float({ min: 0, max: 1 }),
+        fc.float({ min: 0, max: 10 }),
+        fc.float({ min: 0, max: 1 }),
+        (sss, ars, evs, trs) => {
+          const weights = { ...DEFAULT_WEIGHTS, validationTimestamp: new Date() };
+          const score = engine.calculateComposite(
+            buildSignals(sss, ars, evs, trs).sss,
+            buildSignals(sss, ars, evs, trs).ars,
+            buildSignals(sss, ars, evs, trs).evs,
+            buildSignals(sss, ars, evs, trs).trs,
+            weights
+          );
+          return score >= 0 && score <= 1 && Number.isFinite(score);
+        }
+      )
     );
   });
 
   it('normalizes probabilities to 1', () => {
     fc.assert(
-      fc.property(fc.float({ min: 0, max: 1 }), fc.float({ min: 0, max: 1 }), fc.float({ min: 0, max: 10 }), fc.float({ min: 0, max: 1 }), (sss, ars, evs, trs) => {
-        const { probabilities } = engine.selectMode(buildSignals(sss, ars, evs, trs));
-        const sum = Object.values(probabilities).reduce((acc, value) => acc + value, 0);
-        return Math.abs(sum - 1) < 1e-6;
-      })
+      fc.property(
+        fc.float({ min: 0, max: 1 }),
+        fc.float({ min: 0, max: 1 }),
+        fc.float({ min: 0, max: 10 }),
+        fc.float({ min: 0, max: 1 }),
+        (sss, ars, evs, trs) => {
+          const { probabilities } = engine.selectMode(buildSignals(sss, ars, evs, trs));
+          const sum = Object.values(probabilities).reduce((acc, value) => acc + value, 0);
+          return Math.abs(sum - 1) < 1e-6;
+        }
+      )
     );
   });
 
@@ -103,26 +134,32 @@ describe('DecisionEngine property invariants', () => {
 
   it('keeps uncertainty interval bounded', () => {
     fc.assert(
-      fc.property(fc.float({ min: 0, max: 1 }), fc.float({ min: 0, max: 1 }), fc.float({ min: 0, max: 10 }), fc.float({ min: 0, max: 1 }), (sss, ars, evs, trs) => {
-        const weights = { ...DEFAULT_WEIGHTS, validationTimestamp: new Date() };
-        const composite = engine.calculateComposite(
-          buildSignals(sss, ars, evs, trs).sss,
-          buildSignals(sss, ars, evs, trs).ars,
-          buildSignals(sss, ars, evs, trs).evs,
-          buildSignals(sss, ars, evs, trs).trs,
-          weights
-        );
-        const interval = engine.calculateUncertainty(
-          buildSignals(sss, ars, evs, trs).sss,
-          buildSignals(sss, ars, evs, trs).ars,
-          buildSignals(sss, ars, evs, trs).evs,
-          buildSignals(sss, ars, evs, trs).trs,
-          weights,
-          composite
-        ).credibleInterval;
-        const [lower, upper] = interval;
-        return lower >= 0 && upper <= 1;
-      })
+      fc.property(
+        fc.float({ min: 0, max: 1 }),
+        fc.float({ min: 0, max: 1 }),
+        fc.float({ min: 0, max: 10 }),
+        fc.float({ min: 0, max: 1 }),
+        (sss, ars, evs, trs) => {
+          const weights = { ...DEFAULT_WEIGHTS, validationTimestamp: new Date() };
+          const composite = engine.calculateComposite(
+            buildSignals(sss, ars, evs, trs).sss,
+            buildSignals(sss, ars, evs, trs).ars,
+            buildSignals(sss, ars, evs, trs).evs,
+            buildSignals(sss, ars, evs, trs).trs,
+            weights
+          );
+          const interval = engine.calculateUncertainty(
+            buildSignals(sss, ars, evs, trs).sss,
+            buildSignals(sss, ars, evs, trs).ars,
+            buildSignals(sss, ars, evs, trs).evs,
+            buildSignals(sss, ars, evs, trs).trs,
+            weights,
+            composite
+          ).credibleInterval;
+          const [lower, upper] = interval;
+          return lower >= 0 && upper <= 1;
+        }
+      )
     );
   });
 });

@@ -4,13 +4,10 @@ import { appConfig } from '../../config/app-config.js';
 import { CircuitBreaker } from '../../utils/circuit-breaker.js';
 import { logger } from '../../utils/logger.js';
 import { redditRateLimiter } from '../../utils/rate-limiter.js';
+import type { ClientStatus, IPlatformClient, Post, RequestOptions } from '../IPlatformClient.js';
 
 import { getRedditCredentials } from './auth.js';
-import {
-  getApprovedSubredditConfigs,
-  validateSubreddits,
-} from './subreddit-config.js';
-import type { ClientStatus, IPlatformClient, Post } from '../IPlatformClient.js';
+import { getApprovedSubredditConfigs, validateSubreddits } from './subreddit-config.js';
 
 interface SubmissionAuthor {
   id?: string;
@@ -88,14 +85,10 @@ export class RedditClient implements IPlatformClient {
   }
 
   private toPost(submission: Submission): Post {
-    const contentParts = [
-      submission.title,
-      submission.selftext?.trim(),
-    ].filter(Boolean);
+    const contentParts = [submission.title, submission.selftext?.trim()].filter(Boolean);
     const content = contentParts.join('\n').trim() || submission.title;
 
-    const authorObj =
-      typeof submission.author === 'string' ? undefined : submission.author;
+    const authorObj = typeof submission.author === 'string' ? undefined : submission.author;
 
     const authorName =
       authorObj?.name ??
@@ -103,8 +96,7 @@ export class RedditClient implements IPlatformClient {
       (typeof submission.author === 'string' ? submission.author : '') ??
       'unknown';
 
-    const authorId =
-      submission.author_fullname ?? authorObj?.id ?? submission.id;
+    const authorId = submission.author_fullname ?? authorObj?.id ?? submission.id;
 
     return {
       id: submission.id,
@@ -116,24 +108,31 @@ export class RedditClient implements IPlatformClient {
     };
   }
 
-  async search(query: string): Promise<Post[]> {
+  async search(query: string, options?: RequestOptions): Promise<Post[]> {
     const subreddits = this.getDefaultSubreddits();
     if (subreddits.length === 0) {
-      logger.warn('No approved subreddits available for Reddit search');
+      logger.warn(
+        { requestId: options?.requestId },
+        'No approved subreddits available for Reddit search'
+      );
       return [];
     }
 
-    const submissions = await this.searchSubreddits(subreddits, query);
+    const submissions = await this.searchSubreddits(subreddits, query, options);
     return this.toPostList(submissions);
   }
 
-  async searchSubreddits(subreddits: string[], query: string): Promise<Submission[]> {
+  async searchSubreddits(
+    subreddits: string[],
+    query: string,
+    options?: RequestOptions
+  ): Promise<Submission[]> {
     this.ensureEnabled();
 
     const approvedSubreddits = validateSubreddits(subreddits);
     if (approvedSubreddits.length === 0) {
       logger.error(
-        { requested: subreddits },
+        { requested: subreddits, requestId: options?.requestId },
         'No approved subreddits available after validation'
       );
       return [];
@@ -144,6 +143,7 @@ export class RedditClient implements IPlatformClient {
         {
           requested: subreddits,
           approved: approvedSubreddits,
+          requestId: options?.requestId,
         },
         'Some subreddits filtered out before search'
       );
@@ -168,6 +168,7 @@ export class RedditClient implements IPlatformClient {
               subreddits: approvedSubreddits,
               query,
               results: posts.length,
+              requestId: options?.requestId,
             },
             'Reddit search completed'
           );
@@ -176,22 +177,26 @@ export class RedditClient implements IPlatformClient {
         });
       });
     } catch (error) {
-      return this.handleAuthError(error);
+      return this.handleAuthError(error, options?.requestId);
     }
   }
 
-  async reply(submissionId: string, content: string): Promise<{ replyId: string }> {
-    const replyId = await this.comment(submissionId, content);
+  async reply(
+    submissionId: string,
+    content: string,
+    options?: RequestOptions
+  ): Promise<{ replyId: string }> {
+    const replyId = await this.comment(submissionId, content, options);
     return { replyId };
   }
 
-  async comment(submissionId: string, content: string): Promise<string> {
+  async comment(submissionId: string, content: string, options?: RequestOptions): Promise<string> {
     this.ensureEnabled();
 
     if (appConfig.dryRun) {
       const dryRunId = `dry_run_reddit_${Date.now()}`;
       logger.info(
-        { dryRunId, submissionId, content },
+        { dryRunId, submissionId, content, requestId: options?.requestId },
         '[DRY RUN] Reddit comment suppressed'
       );
       return dryRunId;
@@ -204,15 +209,14 @@ export class RedditClient implements IPlatformClient {
     try {
       return await redditRateLimiter.scheduleWrite(async () => {
         return this.circuitBreaker.execute(async () => {
-          const submission = await (this.client.getSubmission(
-            submissionId
-          ) as Promise<Submission>);
+          const submission = await (this.client.getSubmission(submissionId) as Promise<Submission>);
           const comment = await submission.reply(content);
 
           logger.info(
             {
               submissionId,
               commentId: comment.id,
+              requestId: options?.requestId,
             },
             'Reddit comment posted successfully'
           );
@@ -221,7 +225,7 @@ export class RedditClient implements IPlatformClient {
         });
       });
     } catch (error) {
-      return this.handleAuthError(error);
+      return this.handleAuthError(error, options?.requestId);
     }
   }
 
@@ -230,10 +234,7 @@ export class RedditClient implements IPlatformClient {
       const me = await (this.client.getMe() as Promise<RedditProfileData>);
       this.cacheVerification(me);
 
-      logger.info(
-        { username: me.name },
-        'Reddit credentials verified successfully'
-      );
+      logger.info({ username: me.name }, 'Reddit credentials verified successfully');
 
       return {
         available: true,
@@ -279,12 +280,12 @@ export class RedditClient implements IPlatformClient {
     };
   }
 
-  private handleAuthError(error: unknown): never {
+  private handleAuthError(error: unknown, requestId?: string): never {
     const err = error as { statusCode?: number; message?: string };
 
     if (err.statusCode === 401 || err.message?.includes('invalid_grant')) {
       logger.error(
-        { error },
+        { error, requestId },
         'CRITICAL: Reddit refresh token invalid or expired – disabling integration'
       );
       process.env['REDDIT_ENABLED'] = 'false';

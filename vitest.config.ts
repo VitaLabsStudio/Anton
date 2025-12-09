@@ -6,21 +6,22 @@ export default defineConfig({
   // This prevents duplication and keeps paths centralized (TECH-006 mitigation)
   plugins: [tsconfigPaths()],
 
-  // Override esbuild target to ES2024
+  // Override esbuild target to ESNext
   esbuild: {
-    target: 'es2022',
+    target: 'esnext',
   },
 
   // Build configuration for Vite
   build: {
-    target: 'es2022',
+    target: 'esnext',
   },
 
   // Dependency optimization configuration
   optimizeDeps: {
     esbuildOptions: {
-      target: 'es2022',
+      target: 'esnext',
     },
+    include: ['portfinder'],
   },
 
   test: {
