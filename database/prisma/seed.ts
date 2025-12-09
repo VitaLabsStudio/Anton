@@ -156,6 +156,9 @@ async function main(): Promise<void> {
 
   const decision = await prisma.decision.create({
     data: {
+      id: crypto.randomUUID(),
+      createdAt: new Date(),
+      platform: post.platform,
       postId: post.id,
       sssScore: 0.8,
       arsScore: 0.5,
@@ -163,6 +166,9 @@ async function main(): Promise<void> {
       trsScore: 0.9,
       compositeScore: 0.75,
       mode: 'HELPFUL',
+      compositeCredibleIntervalLower: 0.7,
+      compositeCredibleIntervalUpper: 0.8,
+      modeConfidence: 0.9,
       archetypeId: arch?.id,
       safetyFlags: [],
     },
@@ -171,6 +177,7 @@ async function main(): Promise<void> {
   await prisma.reply.create({
     data: {
       decisionId: decision.id,
+      decisionCreatedAt: decision.createdAt,
       content: 'Here is a helpful reply! —Antone (Vita)',
       platform: post.platform,
       replyType: 'AUTO',

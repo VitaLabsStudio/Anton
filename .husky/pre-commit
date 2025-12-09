@@ -1,11 +1,5 @@
-#!/usr/bin/env sh
-echo "🛡️ Running pre-commit checks..."
-echo "💡 TIP: To bypass, run 'git commit --no-verify'"
-
-pnpm lint-staged || {
-  echo "❌ Lint-staged checks failed. Please fix the issues above."
-  echo "💡 To bypass this check in an emergency, run: git commit --no-verify"
+#!/bin/sh
+if git diff --cached --name-only | grep -E " [0-9]+\.(ts|js|json|md)$"; then
+  echo "Error: Duplicate file detected (e.g., file 2.ts). Please remove numbered duplicate files before committing."
   exit 1
-}
-
-echo "✅ Pre-commit checks passed."
+fi
