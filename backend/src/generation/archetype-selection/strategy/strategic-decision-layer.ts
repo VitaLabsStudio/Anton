@@ -63,9 +63,21 @@ export class StrategicDecisionLayer {
   }
 
   private applyFlexibleBoundaries(scores: ArchetypeScores): ArchetypeScores {
-    // Allow out-of-mode archetypes if score margin > 0.08
+    // AC3: "Allow out-of-mode selections when margin > +0.08"
     const topScore = scores.scores[0]?.score || 0;
-    const filtered = scores.scores.filter((s) => s.score >= topScore - 0.15);
+    const threshold = topScore - 0.08; // Use AC3 specified value
+
+    const filtered = scores.scores.filter((s) => s.score >= threshold);
+
+    logger.debug(
+      {
+        topScore,
+        threshold,
+        beforeCount: scores.scores.length,
+        afterCount: filtered.length,
+      },
+      'Applied flexible mode boundaries'
+    );
 
     return {
       ...scores,

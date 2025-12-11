@@ -1,0 +1,117 @@
+{
+  "version": "1.0",
+  "competitors": [
+    {
+      "name": "LiquidIV",
+      "category": "REHYDRATION",
+      "primaryMechanism": "Oral electrolyte drink mix",
+      "pricePoint": "MID",
+      "brandKeywords": ["liquid iv", "liquidiv", "liquid-iv"]
+    },
+    {
+      "name": "Drip Drop",
+      "category": "REHYDRATION",
+      "primaryMechanism": "Medical-grade oral rehydration",
+      "pricePoint": "MID",
+      "brandKeywords": ["drip drop", "dripdrop", "drip-drop"]
+    },
+    {
+      "name": "Pedialyte",
+      "category": "REHYDRATION",
+      "primaryMechanism": "Pediatric electrolyte solution",
+      "pricePoint": "LOW",
+      "brandKeywords": ["pedialyte"]
+    },
+    {
+      "name": "Gatorade",
+      "category": "REHYDRATION",
+      "primaryMechanism": "Sports drink",
+      "pricePoint": "LOW",
+      "brandKeywords": ["gatorade"]
+    },
+    {
+      "name": "Nuun",
+      "category": "REHYDRATION",
+      "primaryMechanism": "Electrolyte tablets",
+      "pricePoint": "MID",
+      "brandKeywords": ["nuun"]
+    },
+    {
+      "name": "ZBiotics",
+      "category": "HANGOVER_PILLS",
+      "primaryMechanism": "Probiotic enzyme pre-drinking",
+      "pricePoint": "HIGH",
+      "brandKeywords": ["zbiotics", "z-biotics"]
+    },
+    {
+      "name": "Flyby",
+      "category": "HANGOVER_PILLS",
+      "primaryMechanism": "Vitamin/herb capsules",
+      "pricePoint": "MID",
+      "brandKeywords": ["flyby", "flyby hangover"]
+    },
+    {
+      "name": "AfterDrink",
+      "category": "HANGOVER_PILLS",
+      "primaryMechanism": "DHM supplement",
+      "pricePoint": "MID",
+      "brandKeywords": ["afterdrink", "after drink"]
+    },
+    {
+      "name": "Cheers",
+      "category": "HANGOVER_PILLS",
+      "primaryMechanism": "DHM supplement",
+      "pricePoint": "HIGH",
+      "brandKeywords": ["cheers health", "cheers hangover", "cheers pills"]
+    },
+    {
+      "name": "DHM Detox",
+      "category": "HANGOVER_PILLS",
+      "primaryMechanism": "DHM supplement",
+      "pricePoint": "MID",
+      "brandKeywords": ["dhm detox"]
+    },
+    {
+      "name": "The I.V. Doc",
+      "category": "IV_THERAPY",
+      "primaryMechanism": "In-home IV service",
+      "pricePoint": "VERY_HIGH",
+      "brandKeywords": ["the i.v. doc", "the iv doc", "iv doc"]
+    },
+    {
+      "name": "Revive",
+      "category": "IV_THERAPY",
+      "primaryMechanism": "IV clinic",
+      "pricePoint": "HIGH",
+      "brandKeywords": ["revive iv", "revive hydration"]
+    },
+    {
+      "name": "HydroMed",
+      "category": "IV_THERAPY",
+      "primaryMechanism": "IV clinic",
+      "pricePoint": "HIGH",
+      "brandKeywords": ["hydromed"]
+    },
+    {
+      "name": "Hair of the Dog",
+      "category": "HOME_REMEDY",
+      "primaryMechanism": "Alcohol consumption",
+      "pricePoint": "VARIES",
+      "brandKeywords": ["hair of the dog"]
+    },
+    {
+      "name": "Activated Charcoal",
+      "category": "HOME_REMEDY",
+      "primaryMechanism": "Toxin absorption",
+      "pricePoint": "LOW",
+      "brandKeywords": ["activated charcoal", "charcoal pills"]
+    },
+    {
+      "name": "Pickle Juice",
+      "category": "HOME_REMEDY",
+      "primaryMechanism": "Electrolyte replenishment",
+      "pricePoint": "LOW",
+      "brandKeywords": ["pickle juice", "pickle brine"]
+    }
+  ]
+}

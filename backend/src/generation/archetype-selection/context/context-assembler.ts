@@ -25,10 +25,12 @@ import {
   DEFAULT_PERSONA_PROFILE,
   DEFAULT_SEMANTIC_PROFILE,
   decisionSignalsSchema,
+  operationalModeSchema,
 } from '../types';
 
 import { AuthorPersonaRefiner } from './author-persona-refiner';
 import { CompetitorStrategyEngine } from './competitor-strategy-engine';
+import { ContentFetcher } from './content-fetcher';
 import { ConversationStateTracker } from './conversation-state-tracker';
 import { SemanticProfilePipeline } from './semantic-profile-pipeline';
 
@@ -57,6 +59,7 @@ export class ContextAssembler {
   private personaRefiner: AuthorPersonaRefiner;
   private competitorEngine: CompetitorStrategyEngine;
   private conversationTracker: ConversationStateTracker;
+  private contentFetcher: ContentFetcher;
 
   constructor(config: Partial<ContextAssemblerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -64,6 +67,7 @@ export class ContextAssembler {
     this.personaRefiner = new AuthorPersonaRefiner();
     this.competitorEngine = new CompetitorStrategyEngine();
     this.conversationTracker = new ConversationStateTracker();
+    this.contentFetcher = new ContentFetcher();
     logger.info({ config: this.config }, 'ContextAssembler initialized');
   }
 
@@ -157,8 +161,24 @@ export class ContextAssembler {
     try {
       return decisionSignalsSchema.parse(signals);
     } catch (error) {
-      logger.warn({ error, signals }, 'Signal validation failed, using defaults');
-      throw new Error('Invalid decision signals');
+      logger.warn({ error, signals }, 'Signal validation failed, using degraded defaults');
+      
+      const safeMode = operationalModeSchema.safeParse(signals.mode);
+      const mode = safeMode.success ? safeMode.data : 'HELPFUL';
+
+      const validPlatforms = ['twitter', 'reddit', 'threads'];
+      const platform = validPlatforms.includes(signals.platform) ? signals.platform : 'reddit';
+      
+      const timestamp = !isNaN(new Date(signals.timestamp).getTime()) ? signals.timestamp : new Date().toISOString();
+
+      // Return minimal valid signals instead of throwing
+      return {
+        postId: signals.postId || 'unknown',
+        mode: mode,
+        modeConfidence: typeof signals.modeConfidence === 'number' ? signals.modeConfidence : 0.3,
+        platform: platform as any,
+        timestamp: timestamp,
+      };
     }
   }
 
@@ -172,12 +192,21 @@ export class ContextAssembler {
     }
 
     try {
-      // Call SemanticProfilePipeline with post content
-      // Note: In production, we would fetch actual post content from database
-      // For now, we use postId as a placeholder
+      // Fetch actual content
+      const postContent = await this.contentFetcher.fetchPostContent(
+        signals.postId,
+        signals.platform
+      );
+
+      if (!postContent) {
+        logger.warn({ postId: signals.postId }, 'Post content not found, using placeholder');
+        return DEFAULT_SEMANTIC_PROFILE;
+      }
+
       const profile = await this.semanticPipeline.run({
         postId: signals.postId,
-        content: `Post ${signals.postId}`, // TODO: Fetch actual content
+        content: postContent.content,
+        authorHandle: postContent.authorHandle,
         platform: signals.platform,
       });
 

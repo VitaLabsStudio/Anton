@@ -3,7 +3,13 @@
  * Story 2.10: Task 2
  */
 
+import fs from 'fs';
+import path from 'path';
+import yaml from 'yaml';
+
 import { logger } from '@/utils/logger';
+import { prisma } from '@/utils/prisma';
+import { redis } from '@/utils/redis';
 
 import type { ArchetypeContext, ArchetypeScore, ArchetypeScores, FactorBreakdown } from '../types';
 
@@ -30,14 +36,14 @@ const DEFAULT_WEIGHTS: Record<string, ScoringWeights> = {
     F8_rotationNovelty: 0.04,
   },
   ENGAGEMENT: {
-    F1_modeIntent: 0.3,
+    F1_modeIntent: 0.28,
     F2_semanticResonance: 0.18,
     F3_authorPersonaFit: 0.14,
     F4_competitorCounter: 0.11,
     F5_conversationState: 0.11,
     F6_performanceMemory: 0.1,
-    F7_safetyCompliance: 0.06,
-    F8_rotationNovelty: 0.0,
+    F7_safetyCompliance: 0.03,
+    F8_rotationNovelty: 0.05,
   },
   HYBRID: {
     F1_modeIntent: 0.22,
@@ -61,6 +67,47 @@ const DEFAULT_WEIGHTS: Record<string, ScoringWeights> = {
   },
 };
 
+function loadWeightsFromConfig(): Record<string, ScoringWeights> {
+  try {
+    const configPath = path.join(process.cwd(), '../config', 'archetype-scoring.yaml');
+    // Note: CWD for backend tests is usually project root or backend dir.
+    // If backend/src/... CWD might be backend/. 
+    // The instruction said: path.join(process.cwd(), 'config', 'archetype-scoring.yaml')
+    // But I created config at project root.
+    // If running from backend package, CWD is backend/.
+    // If running from root, CWD is root.
+    // I'll try to find it.
+    
+    let targetPath = path.join(process.cwd(), 'config', 'archetype-scoring.yaml');
+    if (!fs.existsSync(targetPath)) {
+       targetPath = path.join(process.cwd(), '../config', 'archetype-scoring.yaml');
+    }
+
+    if (!fs.existsSync(targetPath)) {
+        // Fallback for tests running in isolated environment
+        return DEFAULT_WEIGHTS; 
+    }
+
+    const fileContents = fs.readFileSync(targetPath, 'utf8');
+    const config = yaml.parse(fileContents);
+
+    // Validate sums
+    for (const [mode, weights] of Object.entries(config.modes)) {
+      const sum = Object.values(weights as any).reduce((a: number, b: number) => a + b, 0);
+      if (Math.abs(sum - 1.0) > 0.01) {
+        throw new Error(`Mode ${mode} weights sum to ${sum}, expected 1.0 ± 0.01`);
+      }
+    }
+
+    return config.modes as Record<string, ScoringWeights>;
+  } catch (error) {
+    logger.warn({ error }, 'Failed to load config, using defaults');
+    return DEFAULT_WEIGHTS; // Fallback to hardcoded
+  }
+}
+
+const CONFIG_WEIGHTS = loadWeightsFromConfig();
+
 const ARCHETYPES = [
   'COACH',
   'CHECKLIST',
@@ -77,7 +124,7 @@ export class MultiFactorScorer {
   private weights: Record<string, ScoringWeights>;
 
   constructor(customWeights?: Record<string, Partial<ScoringWeights>>) {
-    this.weights = DEFAULT_WEIGHTS;
+    this.weights = CONFIG_WEIGHTS;
     if (customWeights) {
       Object.keys(customWeights).forEach((mode) => {
         this.weights[mode] = { ...this.weights[mode], ...customWeights[mode] };
@@ -86,12 +133,16 @@ export class MultiFactorScorer {
     logger.info('MultiFactorScorer initialized');
   }
 
-  public score(context: ArchetypeContext): ArchetypeScores {
+  public async score(context: ArchetypeContext): Promise<ArchetypeScores> {
     const modeWeights = this.weights[context.mode] || this.weights.HELPFUL;
     const scores: ArchetypeScore[] = [];
 
     for (const archetype of ARCHETYPES) {
-      const factorBreakdown = this.calculateFactorBreakdown(archetype, context, modeWeights);
+      const factorBreakdown = await this.calculateFactorBreakdown(
+        archetype,
+        context,
+        modeWeights
+      );
       const totalScore = factorBreakdown.totalScore;
       const justification = this.generateJustification(factorBreakdown);
 
@@ -119,11 +170,11 @@ export class MultiFactorScorer {
     };
   }
 
-  private calculateFactorBreakdown(
+  private async calculateFactorBreakdown(
     archetype: string,
     context: ArchetypeContext,
     weights: ScoringWeights
-  ): FactorBreakdown {
+  ): Promise<FactorBreakdown> {
     const F1 = this.calculateF1_ModeIntent(archetype, context) * weights.F1_modeIntent;
     const F2 =
       this.calculateF2_SemanticResonance(archetype, context) * weights.F2_semanticResonance;
@@ -132,13 +183,16 @@ export class MultiFactorScorer {
       this.calculateF4_CompetitorCounter(archetype, context) * weights.F4_competitorCounter;
     const F5 =
       this.calculateF5_ConversationState(archetype, context) * weights.F5_conversationState;
-    const F6 =
-      this.calculateF6_PerformanceMemory(archetype, context) * weights.F6_performanceMemory;
+    
+    // F6 is now async
+    const rawF6 = await this.calculateF6_PerformanceMemory(archetype, context);
+    const F6 = rawF6 * weights.F6_performanceMemory;
+    
     const F7 = this.calculateF7_SafetyCompliance(archetype, context) * weights.F7_safetyCompliance;
     const F8 = this.calculateF8_RotationNovelty(archetype, context) * weights.F8_rotationNovelty;
 
-    const rotationPenalty = 0; // TODO: Implement from rotation store
-    const performanceBias = 0; // TODO: Implement from telemetry
+    const rotationPenalty = await this.calculateRotationPenalty(archetype, context);
+    const performanceBias = await this.calculatePerformanceBias(archetype, context);
 
     const totalScore = Math.max(
       0,
@@ -158,6 +212,44 @@ export class MultiFactorScorer {
       performanceBias,
       totalScore,
     };
+  }
+
+  private async calculateRotationPenalty(
+    archetype: string,
+    context: ArchetypeContext
+  ): Promise<number> {
+    try {
+      // Query Redis for last usage timestamp
+      const cacheKey = `rotation:${archetype}:${context.postId.split('-')[0]}`; // Shard by user or prefix
+      const lastUsedStr = await redis.get(cacheKey);
+
+      if (!lastUsedStr) {
+        return 0.0; // No penalty if never used
+      }
+
+      const lastUsedTimestamp = new Date(lastUsedStr);
+      const ageMinutes = (Date.now() - lastUsedTimestamp.getTime()) / 1000 / 60;
+
+      // Exponential decay: penalty = -μ × e^(-k × age)
+      const mu = 0.12;
+      const k = 0.35;
+      const penalty = -mu * Math.exp(-k * ageMinutes);
+
+      // Myth-bust exemption (AC3)
+      if (archetype === 'MYTH_BUST' && context.semanticProfile.misinformationProbability > 0.7) {
+        return 0.0;
+      }
+
+      logger.debug(
+        { archetype, ageMinutes, penalty },
+        'Rotation penalty calculated'
+      );
+
+      return penalty;
+    } catch (error) {
+      logger.warn({ error, archetype }, 'Rotation penalty calculation failed');
+      return 0.0; // Fail open
+    }
   }
 
   private calculateF1_ModeIntent(archetype: string, context: ArchetypeContext): number {
@@ -214,7 +306,7 @@ export class MultiFactorScorer {
 
   private calculateF4_CompetitorCounter(archetype: string, context: ArchetypeContext): number {
     const { competitorIntent } = context;
-    if (!competitorIntent.detected) return 0.5;
+    if (!competitorIntent || !competitorIntent.detected) return 0.5;
 
     // Apply counter-weight if available
     const counterWeight = competitorIntent.recommendedCounterWeights.get(archetype) || 0;
@@ -238,9 +330,39 @@ export class MultiFactorScorer {
     return Math.max(0, Math.min(1, score));
   }
 
-  private calculateF6_PerformanceMemory(_archetype: string, _context: ArchetypeContext): number {
-    // TODO: Query telemetry for archetype performance
-    return 0.5;
+  private async calculateF6_PerformanceMemory(
+    archetype: string,
+    context: ArchetypeContext
+  ): Promise<number> {
+    try {
+      // Query last 7 days of performance
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+      const winRate = await prisma.decisionOutcome.aggregate({
+        where: {
+          selectedArchetype: archetype,
+          timestamp: { gte: sevenDaysAgo },
+          engagementScore: { gte: 0.6 }, // "Win" threshold
+        },
+        _count: true,
+      });
+
+      const totalCount = await prisma.decisionOutcome.count({
+        where: {
+          selectedArchetype: archetype,
+          timestamp: { gte: sevenDaysAgo },
+        },
+      });
+
+      if (totalCount < 10) return 0.5; // Neutral with low sample
+
+      const rate = winRate._count / totalCount;
+      return Math.max(0.0, Math.min(1.0, rate));
+
+    } catch (error) {
+      logger.warn({ error, archetype }, 'Performance memory calculation failed');
+      return 0.5; // Neutral fallback
+    }
   }
 
   private calculateF7_SafetyCompliance(archetype: string, context: ArchetypeContext): number {
@@ -256,8 +378,48 @@ export class MultiFactorScorer {
   }
 
   private calculateF8_RotationNovelty(_archetype: string, _context: ArchetypeContext): number {
-    // TODO: Query rotation store
-    return 0.5;
+    // This factor is now mostly handled by rotationPenalty, but can still offer a small base score if needed.
+    // For now, return neutral or low value as penalty does the heavy lifting.
+    return 0.5; 
+  }
+
+  private async calculatePerformanceBias(
+    archetype: string,
+    context: ArchetypeContext
+  ): Promise<number> {
+    try {
+      // Query last 7 days of performance for this archetype
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+      const performance = await prisma.decisionOutcome.aggregate({
+        where: {
+          selectedArchetype: archetype,
+          timestamp: { gte: sevenDaysAgo },
+        },
+        _avg: {
+          engagementScore: true, // upvotes + replies + shares weighted
+        },
+        _count: true,
+      });
+
+      if (!performance._count || performance._count < 10) {
+        return 0.0; // Need minimum sample size
+      }
+
+      // Normalize to [-0.1, +0.1] range
+      const avgScore = performance._avg.engagementScore || 0;
+      const bias = Math.max(-0.1, Math.min(0.1, (avgScore - 0.5) * 0.2));
+
+      logger.debug(
+        { archetype, avgScore, bias, sampleSize: performance._count },
+        'Performance bias calculated'
+      );
+
+      return bias;
+    } catch (error) {
+      logger.warn({ error, archetype }, 'Performance bias calculation failed');
+      return 0.0;
+    }
   }
 
   private generateJustification(breakdown: FactorBreakdown): string {

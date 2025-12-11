@@ -1,0 +1,58 @@
+# Story 2.10: Multi-Factor Scoring Weights Configuration
+# Each mode defines 8 factor weights that must sum to 1.0 ± 0.01
+
+version: 1
+modes:
+  HELPFUL:
+    F1_modeIntent: 0.24
+    F2_semanticResonance: 0.18
+    F3_authorPersonaFit: 0.14
+    F4_competitorCounter: 0.11
+    F5_conversationState: 0.11
+    F6_performanceMemory: 0.10
+    F7_safetyCompliance: 0.08
+    F8_rotationNovelty: 0.04
+
+  ENGAGEMENT:
+    F1_modeIntent: 0.28
+    F2_semanticResonance: 0.18
+    F3_authorPersonaFit: 0.14
+    F4_competitorCounter: 0.11
+    F5_conversationState: 0.11
+    F6_performanceMemory: 0.10
+    F7_safetyCompliance: 0.03
+    F8_rotationNovelty: 0.05
+
+  HYBRID:
+    F1_modeIntent: 0.22
+    F2_semanticResonance: 0.18
+    F3_authorPersonaFit: 0.14
+    F4_competitorCounter: 0.11
+    F5_conversationState: 0.11
+    F6_performanceMemory: 0.10
+    F7_safetyCompliance: 0.09
+    F8_rotationNovelty: 0.05
+
+  DISENGAGED:
+    F1_modeIntent: 0.30
+    F2_semanticResonance: 0.15
+    F3_authorPersonaFit: 0.10
+    F4_competitorCounter: 0.05
+    F5_conversationState: 0.15
+    F6_performanceMemory: 0.10
+    F7_safetyCompliance: 0.10
+    F8_rotationNovelty: 0.05
+
+# Weight ranges per AC2 (for validation)
+ranges:
+  F1_modeIntent:
+    HELPFUL: [0.20, 0.28]
+    ENGAGEMENT: [0.25, 0.35]
+    HYBRID: [0.18, 0.26]
+  F2_semanticResonance: [0.15, 0.22]
+  F3_authorPersonaFit: [0.10, 0.18]
+  F4_competitorCounter: [0.08, 0.15]
+  F5_conversationState: [0.08, 0.14]
+  F6_performanceMemory: [0.08, 0.13]
+  F7_safetyCompliance: [0.03, 0.12]
+  F8_rotationNovelty: [0.05, 0.10]

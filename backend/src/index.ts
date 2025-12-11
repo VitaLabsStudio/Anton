@@ -12,6 +12,8 @@ import { threadsRouter } from './api/routes/threads.js';
 import { twitterRouter } from './api/routes/twitter.js';
 import { mlRouter } from './api/routes/ml.js';
 import { analyticsTemporalRouter } from './api/routes/analytics-temporal.js';
+import { authorsRouter } from './api/routes/authors.js';
+import { competitiveRouter } from './api/routes/competitive.js';
 import { startTemporalConfigWatcher } from './services/temporal-config-watcher.js';
 
 const app = new Hono();
@@ -32,6 +34,8 @@ app.route('/api/analytics/temporal', analyticsTemporalRouter);
 app.route('/health', healthRouter);
 app.route('/metrics', metricsRouter);
 app.route('/api/decisions', decisionsRouter);
+app.route('/api/authors', authorsRouter);
+app.route('/api/competitive', competitiveRouter);
 
 // Start config watcher if enabled
 startTemporalConfigWatcher();

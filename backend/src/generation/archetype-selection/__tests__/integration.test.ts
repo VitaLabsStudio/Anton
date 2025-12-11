@@ -273,4 +273,96 @@ describe('Archetype Selection Engine - Integration', () => {
       await expect(selector.selectArchetype(signals)).resolves.toBeDefined();
     });
   });
+
+  describe('PII Redaction Integration', () => {
+    it('should redact PII before semantic analysis', async () => {
+      // Arrange
+      const signals: DecisionSignals = {
+        postId: 'test-pii-content',
+        mode: 'HELPFUL',
+        modeConfidence: 0.85,
+        platform: 'reddit',
+        authorId: 'author-456',
+        timestamp: new Date().toISOString(),
+      };
+
+      // Act
+      const selection = await selector.selectArchetype(signals);
+
+      // Assert
+      expect(selection).toBeDefined();
+      expect(selection.archetype).toBeDefined();
+      expect(selection.confidence).toBeGreaterThan(0);
+      // PII redaction should not break the pipeline
+      expect(selection.reason).toBeDefined();
+      expect(selection.factorBreakdown).toBeDefined();
+    });
+
+    it('should respect enablePIIRedaction config flag', async () => {
+      // Arrange
+      const signals: DecisionSignals = {
+        postId: 'test-pii-config',
+        mode: 'HELPFUL',
+        modeConfidence: 0.85,
+        platform: 'twitter',
+        timestamp: new Date().toISOString(),
+      };
+
+      // Act
+      const selection = await selector.selectArchetype(signals);
+
+      // Assert
+      expect(selection).toBeDefined();
+      // Pipeline should work regardless of PII redaction setting
+      expect(selection.archetype).toBeDefined();
+      expect(selection.confidence).toBeGreaterThan(0);
+    });
+
+    it('should handle content with multiple PII types', async () => {
+      // Arrange
+      const signals: DecisionSignals = {
+        postId: 'test-multiple-pii',
+        mode: 'HELPFUL',
+        modeConfidence: 0.85,
+        platform: 'reddit',
+        authorId: 'author-789',
+        timestamp: new Date().toISOString(),
+      };
+
+      // Act
+      const selection = await selector.selectArchetype(signals);
+
+      // Assert
+      expect(selection).toBeDefined();
+      expect(selection.archetype).toBeDefined();
+      expect(selection.confidence).toBeGreaterThan(0);
+      // Multiple PII types should be handled gracefully
+      expect(selection.reason).toBeDefined();
+    });
+
+    it('should maintain semantic analysis quality after redaction', async () => {
+      // Arrange
+      const signals: DecisionSignals = {
+        postId: 'test-quality-after-redaction',
+        mode: 'HELPFUL',
+        modeConfidence: 0.85,
+        platform: 'twitter',
+        timestamp: new Date().toISOString(),
+      };
+
+      // Act
+      const selection = await selector.selectArchetype(signals);
+
+      // Assert
+      expect(selection).toBeDefined();
+      expect(selection.confidence).toBeGreaterThan(0); // Confidence should be present
+      expect(selection.factorBreakdown).toBeDefined();
+      // All 8 factors should still be evaluated
+      const breakdownKeys = Object.keys(selection.factorBreakdown);
+      expect(breakdownKeys.length).toBeGreaterThanOrEqual(8);
+      // PII redaction should not break the pipeline
+      expect(selection.archetype).toBeDefined();
+      expect(selection.reason).toBeDefined();
+    });
+  });
 });

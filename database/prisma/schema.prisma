@@ -108,26 +108,75 @@ model Author {
   platformId         String             @map("platform_id")
   handle             String
   displayName        String?            @map("display_name")
+  bio                String?            @map("bio")
   followerCount      Int                @default(0) @map("follower_count")
   isVerified         Boolean            @default(false) @map("is_verified")
   isPowerUser        Boolean            @default(false) @map("is_power_user")
+  userTier           UserTier           @default(NEW_UNKNOWN) @map("user_tier")
   powerTierId        String?            @map("power_tier_id")
   archetypeTags      String[]           @map("archetype_tags")
   relationshipScore  Float              @default(0.5) @map("relationship_score")
   interactionHistory Json               @default("[]") @map("interaction_history")
   firstSeenAt        DateTime           @default(now()) @map("first_seen_at")
   lastSeenAt         DateTime           @default(now()) @map("last_seen_at")
+  lastTierUpdate     DateTime?          @map("last_tier_update")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
   powerTier          PowerTier?         @relation(fields: [powerTierId], references: [id], onDelete: SetNull)
   champions          CommunityChampion?
   posts              Post[]
+  tierChanges        TierChange[]
+  pendingActions     PendingAction[]
 
   @@unique([platform, platformId])
   @@index([platform, handle])
   @@index([isPowerUser])
   @@index([relationshipScore])
+  @@index([userTier])
+  @@index([isPowerUser, userTier])
+  @@index([lastTierUpdate])
   @@map("authors")
+}
+
+/// Audit trail for tier changes and overrides
+model TierChange {
+  id             String    @id @default(uuid())
+  authorId       String    @map("author_id")
+  author         Author    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  previousTier   UserTier? @map("previous_tier")
+  newTier        UserTier  @map("new_tier")
+  trigger        String
+  growthRate     Float?    @map("growth_rate")
+  engagementRate Float?    @map("engagement_rate")
+  followerCount  Int?      @map("follower_count")
+  notes          String?
+  createdBy      String?   @map("created_by")
+  metadata       Json?
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([trigger, createdAt])
+  @@index([createdAt])
+  @@map("tier_changes")
+}
+
+/// Track follow-up obligations per tier (likes, thank-yous, gifts)
+model PendingAction {
+  id          String    @id @default(uuid())
+  authorId    String    @map("author_id")
+  author      Author    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  actionType  String    @map("action_type")
+  targetCount Int       @map("target_count")
+  completed   Int       @default(0)
+  userTier    UserTier  @map("user_tier")
+  triggerPost String?   @map("trigger_post")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  expiresAt   DateTime  @map("expires_at")
+
+  @@index([authorId, actionType, completed])
+  @@index([expiresAt])
+  @@index([createdAt])
+  @@map("pending_actions")
 }
 
 /// Social media post detected by keyword monitoring
@@ -176,6 +225,11 @@ model Decision {
   temporalContext        Json?                  @map("temporal_context")
   competitorDetected     String?                @map("competitor_detected")
   isPowerUser            Boolean                @default(false) @map("is_power_user")
+  userTier               UserTier               @default(NEW_UNKNOWN) @map("user_tier")
+  responseTargetMinutes  Int?                   @map("response_target_minutes")
+  caringResponse         Boolean                @default(false) @map("caring_response")
+  engagementRate         Float?                 @map("engagement_rate")
+  tierReasons            Json?                  @map("tier_reasons")
   segmentUsed            String?                @map("segment_used")
   decisionLogicVersion   String                 @default("v2.1") @map("decision_logic_version")
   needsReview            Boolean                @default(false) @map("needs_review")
@@ -489,6 +543,16 @@ model WorkerHeartbeat {
   @@unique([workerName])
   @@index([lastActivityAt])
   @@map("worker_heartbeats")
+}
+
+enum UserTier {
+  MEGA_POWER
+  MACRO_POWER
+  MICRO_POWER
+  ENGAGED_REGULAR
+  STANDARD
+  SMALL
+  NEW_UNKNOWN
 }
 
 enum Platform {

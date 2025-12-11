@@ -4,6 +4,7 @@
  */
 
 import { logger } from '@/utils/logger';
+import { redis } from '@/utils/redis';
 
 import { ContextAssembler } from './context/context-assembler';
 import { TelemetrySink } from './learning/telemetry-sink';
@@ -53,7 +54,7 @@ export class ArchetypeSelector {
       );
 
       // Step 2: Calculate multi-factor scores
-      const scores = this.scorer.score(context);
+      const scores = await this.scorer.score(context);
       logger.debug(
         {
           requestId,
@@ -133,6 +134,11 @@ export class ArchetypeSelector {
       };
 
       await this.telemetrySink.recordOutcome(outcome);
+
+      // Update rotation store
+      const cacheKey = `rotation:${selection.archetype}:${signals.postId.split('-')[0]}`;
+      await redis.set(cacheKey, new Date().toISOString(), 'EX', 86400 * 7); // 7 day TTL
+
     } catch (error) {
       logger.warn({ error }, 'Telemetry recording failed');
     }

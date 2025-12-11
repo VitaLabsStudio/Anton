@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Author, Post, Platform } from '@prisma/client';
+import type { Author, Post, Platform, UserTier } from '@prisma/client';
 import NodeCache from 'node-cache';
 import CircuitBreaker from 'opossum';
 import YAML from 'yaml';
@@ -12,10 +12,20 @@ import type { MetricsAdapter } from '../observability/metrics-adapter.js';
 import { metricsCollector } from '../observability/metrics-registry.js';
 import { logger } from '../utils/logger.js';
 import { prisma as prismaClient } from '../utils/prisma.js';
+import { redis } from '../utils/redis.js';
 import { temporalMultiplier } from '../workers/temporal-multiplier.js';
 
-import { detectCompetitor, type CompetitorSignal } from './competitive-detector.js';
-import { detectPowerUser, type PowerUserSignal } from './power-user-detector.js';
+import {
+  detectCompetitor,
+  saveCompetitiveMention,
+  type CompetitorSignal,
+} from './competitive-detector.js';
+import {
+  detectUserTier,
+  archetypesForTier,
+  type TierDetectionResult,
+  TIER_RESPONSE_TARGETS,
+} from './tiered-user-detector.js';
 import { checkSafetyProtocol, SafetySeverity, type SafetySignal } from './safety-protocol.js';
 import { analyzeLinguisticIntent, type SignalResult as SssSignal } from './signal-1-linguistic.js';
 import { analyzeAuthorContext, type SignalResult as ArsSignal } from './signal-2-author.js';
@@ -58,6 +68,12 @@ export interface DecisionResult {
   temporalContext: unknown;
   competitorDetected: string | null;
   isPowerUser: boolean;
+  userTier: UserTier;
+  responseTargetMinutes: number;
+  caringResponse: boolean;
+  tierReasons: string[];
+  suggestedArchetypes: string[];
+  engagementRate: number;
   segmentUsed: string;
   decisionLogicVersion: string;
 }
@@ -198,7 +214,7 @@ interface SignalBundle {
   evs: EvsSignal;
   trs: TrsSignal;
   safety: SafetySignal;
-  powerUser: PowerUserSignal;
+  powerUser: TierDetectionResult;
   competitor: CompetitorSignal;
   temporal: TemporalSignal;
 }
@@ -226,8 +242,27 @@ const FALLBACK_SIGNALS = {
     distressProbability: 1,
     contextCheckPerformed: false,
   } as SafetySignal,
-  powerUser: { isPowerUser: false, confidence: 0.5 } as PowerUserSignal,
-  competitor: { detected: false, name: null, confidence: 0 } as CompetitorSignal,
+  powerUser: {
+    isPowerUser: false,
+    userTier: 'NEW_UNKNOWN',
+    engagementRate: 0,
+    reasons: [],
+    responseTargetMinutes: TIER_RESPONSE_TARGETS['NEW_UNKNOWN'],
+    suggestedArchetypes: archetypesForTier('NEW_UNKNOWN'),
+    caringResponse: true,
+    followUpPlan: [],
+    metadata: { bioKeywords: [], verified: false, lowConfidence: false },
+    confidence: 0.5,
+  } as TierDetectionResult,
+  competitor: {
+    detected: false,
+    name: null,
+    category: null,
+    sentiment: 'NEUTRAL',
+    satisfaction: 'SATISFIED',
+    opportunityScore: 0,
+    confidence: 0,
+  } as CompetitorSignal,
 };
 
 function normalizeTimeOfDay(date: Date): string {
@@ -434,6 +469,26 @@ export class DecisionEngine {
   async analyzePost(post: Post, author: Author): Promise<DecisionResult> {
     const start = process.hrtime.bigint();
     const signals = await this.fetchSignals(post, author);
+
+    if (signals.competitor.detected && signals.competitor.name) {
+      // Always log the mention
+      await saveCompetitiveMention(post.id, signals.competitor);
+
+      // Check rate limits
+      const allowed = await this.checkCompetitiveRateLimit(
+        signals.competitor.name,
+        signals.competitor.opportunityScore
+      );
+
+      if (!allowed) {
+        logger.info(
+          { competitor: signals.competitor.name },
+          'Competitive rate limit exceeded, suppressing signal'
+        );
+        signals.competitor.detected = false;
+      }
+    }
+
     const context = this.buildDecisionContext(post);
     const weights = await this.getWeights(context);
 
@@ -501,7 +556,14 @@ export class DecisionEngine {
       },
       temporalContext: signals.temporal.context,
       competitorDetected: signals.competitor.detected ? signals.competitor.name : null,
-      isPowerUser: signals.powerUser.isPowerUser,
+      isPowerUser: Boolean(signals.powerUser.isPowerUser),
+      userTier: signals.powerUser.userTier ?? 'NEW_UNKNOWN',
+      responseTargetMinutes:
+        signals.powerUser.responseTargetMinutes ?? TIER_RESPONSE_TARGETS['NEW_UNKNOWN'],
+      caringResponse: signals.powerUser.caringResponse ?? false,
+      tierReasons: signals.powerUser.reasons ?? [],
+      suggestedArchetypes: signals.powerUser.suggestedArchetypes ?? [],
+      engagementRate: signals.powerUser.engagementRate ?? 0,
       segmentUsed,
       decisionLogicVersion: DECISION_LOGIC_VERSION,
     };
@@ -539,8 +601,8 @@ export class DecisionEngine {
         FALLBACK_SIGNALS.safety
       ),
       this.fetchSignalWithBreaker(
-        'PowerUser',
-        () => detectPowerUser(author),
+        'UserTier',
+        () => detectUserTier(author),
         FALLBACK_SIGNALS.powerUser
       ),
       this.fetchSignalWithBreaker(
@@ -799,13 +861,19 @@ export class DecisionEngine {
     mode: OperationalMode;
     probabilities: Record<OperationalMode, number>;
   } {
-    const { safety, trs, powerUser } = signals;
+    const { safety, trs, powerUser, competitor } = signals;
 
     if (safety.shouldDisengage) {
       return {
         mode: 'DISENGAGED',
         probabilities: this.gatedProbabilities('DISENGAGED'),
       };
+    }
+
+    // Competitive Override
+    if (competitor.detected) {
+      const mode: OperationalMode = competitor.opportunityScore > 0.6 ? 'HELPFUL' : 'HYBRID';
+      return this.probabilisticMode(mode, signals);
     }
 
     if (trs.score < thresholds.trsGate) {
@@ -1090,31 +1158,47 @@ export class DecisionEngine {
   }
 
   private pickArchetype(signals: SignalBundle): string | null {
+    // Competitor Override (AC 8)
+    if (signals.competitor.detected) {
+      return 'PROBLEM_SOLUTION_DIRECT';
+    }
+
     const detectedArchetypes = signals.ars.archetypes;
+    const allowedByTier = signals.powerUser.suggestedArchetypes ?? [];
     const temporalPreferences = signals.temporal.context.archetypePreferences ?? [];
 
-    if (detectedArchetypes.length > 0 && temporalPreferences.length > 0) {
-      const preferredMatch = detectedArchetypes.find((a) => temporalPreferences.includes(a));
-      if (preferredMatch) {
-        logger.info(
-          {
-            preferredMatch,
-            detected: detectedArchetypes,
-            preferences: temporalPreferences,
-          },
-          'temporal_archetype_applied'
-        );
-        return preferredMatch;
-      }
+    // 1. Filter Temporal Preferences by Tier Allowance
+    const allowedTemporal = temporalPreferences.filter((a) => allowedByTier.includes(a));
+    if (allowedTemporal.length > 0) {
+      logger.info(
+        {
+          preferredMatch: allowedTemporal[0],
+          preferences: temporalPreferences,
+          tier: signals.powerUser.userTier,
+        },
+        'temporal_archetype_applied_with_tier_check'
+      );
+      return allowedTemporal[0];
     }
 
-    if (signals.ars.archetypes.length > 0) {
-      return signals.ars.archetypes[0] ?? null;
+    // 2. Filter Context/ARS Archetypes by Tier Allowance
+    const allowedContext = detectedArchetypes.filter((a) => allowedByTier.includes(a));
+    if (allowedContext.length > 0) {
+      return allowedContext[0];
     }
+
+    // 3. Fallback to Tier Default (top suggested)
+    if (allowedByTier.length > 0) {
+      return allowedByTier[0];
+    }
+
+    // 4. Competitor Fallback (only if no tier suggestions)
     if (signals.competitor.detected && signals.competitor.name) {
       return `competitor_${signals.competitor.name}`;
     }
-    return 'general';
+
+    // 5. Ultimate Fallback
+    return detectedArchetypes[0] ?? 'general';
   }
 
   private async resolveArchetypeId(name: string | null): Promise<string | null> {
@@ -1154,6 +1238,11 @@ export class DecisionEngine {
       temporalContext: decision.temporalContext,
       competitorDetected: decision.competitorDetected,
       isPowerUser: decision.isPowerUser,
+      userTier: decision.userTier,
+      responseTargetMinutes: decision.responseTargetMinutes,
+      caringResponse: decision.caringResponse,
+      engagementRate: decision.engagementRate,
+      tierReasons: decision.tierReasons,
       compositeCredibleIntervalLower: decision.compositeCredibleInterval[0],
       compositeCredibleIntervalUpper: decision.compositeCredibleInterval[1],
       modeConfidence: decision.modeConfidence,
@@ -1185,8 +1274,60 @@ export class DecisionEngine {
           data: { processedAt: new Date() },
         });
       });
+
+      if (decision.competitorDetected && decision.mode !== 'DISENGAGED') {
+        await this.incrementCompetitiveCounters(decision.competitorDetected);
+      }
     } catch (error) {
       logger.error({ error }, 'DecisionEngine persistence failed');
+    }
+  }
+
+  private async checkCompetitiveRateLimit(
+    competitorName: string,
+    opportunityScore: number
+  ): Promise<boolean> {
+    const today = new Date().toISOString().split('T')[0];
+    const keyCompetitor = `competitive:${competitorName}:${today}`;
+    const keyGlobal = `competitive:global:${today}`;
+
+    try {
+      const [compCount, globalCount] = await Promise.all([
+        redis.get(keyCompetitor),
+        redis.get(keyGlobal),
+      ]);
+
+      if (compCount && parseInt(compCount, 10) >= 5) {
+        return false;
+      }
+
+      if (globalCount && parseInt(globalCount, 10) >= 15) {
+        // Prioritize high opportunity score
+        return opportunityScore > 0.8;
+      }
+
+      return true;
+    } catch (error) {
+      logger.error({ error }, 'Redis rate limit check failed');
+      return true; // Fail open
+    }
+  }
+
+  private async incrementCompetitiveCounters(competitorName: string): Promise<void> {
+    const today = new Date().toISOString().split('T')[0];
+    const keyCompetitor = `competitive:${competitorName}:${today}`;
+    const keyGlobal = `competitive:global:${today}`;
+    const ttl = 86400; // 24 hours
+
+    try {
+      const pipeline = redis.pipeline();
+      pipeline.incr(keyCompetitor);
+      pipeline.expire(keyCompetitor, ttl);
+      pipeline.incr(keyGlobal);
+      pipeline.expire(keyGlobal, ttl);
+      await pipeline.exec();
+    } catch (error) {
+      logger.error({ error }, 'Failed to increment competitive counters');
     }
   }
 

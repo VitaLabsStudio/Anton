@@ -1,10 +1,12 @@
 import crypto from 'node:crypto';
 
-import type { Post, Author, OperationalMode } from '@prisma/client';
+import type { Post, Author, OperationalMode, UserTier } from '@prisma/client';
 
 import { contextEngine, type ContextResult } from '../analysis/context-intel/service.js';
 import { decisionEngine } from '../analysis/decision-engine.js';
 import { getTemporalContext } from '../analysis/temporal-intelligence.js';
+import { TIER_PRIORITY, TIER_RESPONSE_TARGETS } from '../analysis/tiered-user-detector.js';
+import { metricsCollector } from '../observability/metrics-registry.js';
 import { CircuitBreaker } from '../utils/circuit-breaker.js';
 import { logger } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
@@ -89,11 +91,15 @@ export class QueueProcessor {
             post: post as Post & { author: Author },
             isPriority: Boolean(context.isPriority),
             detectedAt: post.detectedAt,
+            tierPriority: this.resolveTierPriority(post.author.userTier as UserTier | undefined),
           };
         })
       );
 
       withTemporalPriority.sort((a, b) => {
+        if (a.tierPriority !== b.tierPriority) {
+          return a.tierPriority - b.tierPriority;
+        }
         if (a.isPriority === b.isPriority) {
           return (a.detectedAt?.getTime() ?? 0) - (b.detectedAt?.getTime() ?? 0);
         }
@@ -125,6 +131,7 @@ export class QueueProcessor {
       // Step 1: Initial Signal Analysis
       // analyzePost calculates signals, makes a decision, and SAVES it (setting processedAt)
       const decision = await decisionEngine.analyzePost(post, post.author);
+      this.checkSla(decision.responseTargetMinutes, decision.userTier as UserTier, post);
 
       // Step 2: Context Enrichment Gate
       // Trigger if score >= 0.65 OR power_user OR competitor_detected
@@ -208,6 +215,32 @@ export class QueueProcessor {
       }
     } catch (error) {
       postLogger.error({ error }, 'Failed to process post');
+    }
+  }
+
+  private resolveTierPriority(tier?: UserTier): number {
+    if (!tier) {
+      return TIER_PRIORITY['NEW_UNKNOWN'];
+    }
+    return TIER_PRIORITY[tier] ?? TIER_PRIORITY['NEW_UNKNOWN'];
+  }
+
+  private checkSla(targetMinutes: number | undefined, tier: UserTier, post: Post): void {
+    if (!post.detectedAt) return;
+    const elapsedMinutes = (Date.now() - post.detectedAt.getTime()) / (1000 * 60);
+    const sla = targetMinutes ?? TIER_RESPONSE_TARGETS[tier] ?? 120;
+
+    if (elapsedMinutes > sla) {
+      metricsCollector.increment('tier_sla_breaches_total', { tier });
+      logger.warn(
+        {
+          postId: post.id,
+          tier,
+          elapsedMinutes,
+          sla,
+        },
+        'SLA breach detected for tiered response'
+      );
     }
   }
 }
